@@ -1,25 +1,69 @@
+<div align="center" dir="rtl">
 
-![chiaki-ng Logo](gui/res/chiaking-logo.svg)
+<img src="android/app/src/main/assets/web/icon.png" width="104" alt="ترجِم">
 
-# [chiaki-ng](https://chiaki-ng.github.io/chiaki-ng/)
+# ترجِم للجوال
 
-An open source PlayStation remote play project serving as the next-generation of Chiaki with improvements and ongoing support now that the original Chiaki project is in maintenance mode only. [Click here to see the accompanying site for documentation, updates and more](https://chiaki-ng.github.io/chiaki-ng/).
+**ترجمة عربية فوق ألعاب الـPS5 على التلفزيون، من الجوال مباشرة وبدون لابتوب.**
 
-## Discord
-[chiaki-ng community Discord](https://discord.gg/tAMbRuwXDH)
+### [⬇️ نزّل آخر نسخة (APK)](../../releases/latest)
 
-## Official downloads
-Only download chiaki-ng from these sources:
+</div>
 
-- [GitHub Releases](https://github.com/chiaki-ng/chiaki-ng/releases)
-- [Flathub](https://flathub.org/apps/io.github.streetpea.Chiaki4deck)
-- winget: `winget install --id=StreetPea.chiaki-ng -e`
-- Homebrew: `brew install --cask streetpea/streetpea/chiaki-ng`
+<div dir="rtl">
 
-Other websites offering chiaki-ng downloads, such as chiaki-ng.com, are not run by this project, and we can't vouch for the files they serve.
+## وش يسوي؟
 
-## Disclaimer
-This project is not endorsed or certified by Sony Interactive Entertainment LLC.
+الجوال ياخذ نسخة من صورة الـPS5 عن طريق الشبكة، يقرأ سطر الحوار الإنجليزي، يترجمه داخل الجوال، ويرسل العربي لتطبيق ترجِم على التلفزيون اللي يرسمه فوق اللعبة. لعبتك ويدك ما يتغيّر فيهم شي.
 
-Chiaki is a Free and Open Source Software Client for PlayStation 4 and PlayStation 5 Remote Play
-for Linux, FreeBSD, OpenBSD, Android, macOS, Windows, Nintendo Switch and potentially even more platforms.
+على Galaxy S20 FE السطر ياخذ حوالي عُشر ثانية والشاشة شغّالة.
+
+## التثبيت
+
+1. من [صفحة الإصدارات](../../releases/latest) نزّل **`Tarjim-Phone.apk`** وثبّته (اسمح بالتثبيت من هذا المصدر لو سألك).
+2. تطبيق ترجِم لازم يكون على التلفزيون. يتثبّت مرة وحدة من [نسخة الكمبيوتر](https://github.com/aketo1/tarjim).
+
+## أول مرة: الإعداد
+
+افتح التطبيق وروح لـ**«الإعداد»**:
+
+1. **عنوان التلفزيون:** افتح ترجِم على التلفزيون وتلقاه مكتوب بالأصفر.
+2. **عنوان الـPS5:** الإعدادات ‹ الشبكة ‹ عرض حالة الاتصال ‹ عنوان IP.
+3. **اربط الـPS5:**
+   - على الـPS5 أضف مستخدم بحساب PSN **ثاني** (مجاني) وفعّل: الإعدادات ‹ النظام ‹ اللعب عن بُعد ‹ تمكين اللعب عن بُعد.
+   - اضغط «اربط الـPS5» وسجّل دخول بالحساب الثاني في صفحة Sony.
+   - على الـPS5 بالحساب الثاني: الإعدادات ‹ النظام ‹ اللعب عن بُعد ‹ ربط جهاز، واكتب الأرقام الثمانية في الجوال.
+
+> **ليش حساب ثاني؟** لو اتصل الجوال بنفس الحساب اللي تلعب فيه، الـPS5 يفصل يدك.
+
+## كل مرة
+
+1. شغّل لعبتك بحسابك العادي.
+2. افتح ترجِم، اختر اللعبة، واضغط **«ابدأ الترجمة»**.
+3. اضغط **«عتّم الشاشة»** وخلّ الجوال على الشاحن.
+
+> **لا تقفل شاشة الجوال.** أندرويد يبطّئ التطبيق لو انطفت الشاشة: الترجمة تتأخر ثانية ونص ثم يفصل. زر التعتيم يخلي الشاشة سوداء وما تستهلك شي تقريباً.
+
+## المميزات
+
+- نفس واجهة نسخة الكمبيوتر: الرئيسية، المظهر، قاموس الأسماء.
+- لكل لعبة شكلها: الخط والحجم واللون والخلفية والموضع ومدة بقاء العربي.
+- قاموس أسماء يثبّت أسماء الشخصيات (قاموس Red Dead Redemption 2 جاهز).
+- القلم جنب أي سطر: اكتب الترجمة بطريقتك وتنحفظ.
+- لو انقطعت الصورة يعيد الاتصال لحاله.
+
+## حدوده
+
+- جودة الترجمة أقل من نسخة الكمبيوتر، لأن المترجم اللي يشتغل داخل الجوال أصغر.
+- الإنجليزي يتغطّى بخلفية داكنة تحت العربي.
+- للـPS5 فقط حالياً.
+
+</div>
+
+---
+
+## For developers
+
+Everything technical is in [`docs/REPORT.md`](docs/REPORT.md). The app is built by GitHub Actions on every push to `main` and published to the `latest` release.
+
+Built on the Android client of [chiaki-ng](https://github.com/streetpea/chiaki-ng) (AGPL-3.0, see `COPYING` and `LICENSES/`). Personal, non-distributed project.

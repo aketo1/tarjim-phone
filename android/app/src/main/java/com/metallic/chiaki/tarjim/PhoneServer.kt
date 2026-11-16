@@ -199,6 +199,8 @@ class PhoneServer private constructor(private val context: Context)
 			"/api/check" -> checkJson()
 			"/api/profile" -> profileView(query["name"] ?: "default")
 			"/api/setup" -> JSONObject().put("tv", store.tv).put("console", store.console).put("consoles", checkJson().getJSONArray("consoles"))
+				.put("account", store.accountName.ifEmpty { if(store.account.isNotEmpty()) "محفوظ" else "" })
+			"/api/frame" -> TarjimService.engine?.frameJpeg() ?: return null
 			"/api/preview" ->
 			{
 				val p = store.load(query["name"] ?: "default")
@@ -283,7 +285,7 @@ class PhoneServer private constructor(private val context: Context)
 			when(result)
 			{
 				null -> send(out, 404, "application/json", "{\"error\":\"unknown\"}".toByteArray())
-				is ByteArray -> send(out, 200, "image/png", result)
+				is ByteArray -> send(out, 200, if(path == "/api/frame") "image/jpeg" else "image/png", result)
 				is JSONObject -> send(out, if(result.has("error")) 400 else 200, "application/json; charset=utf-8", result.toString().toByteArray(Charsets.UTF_8))
 				else -> send(out, 500, "text/plain", ByteArray(0))
 			}

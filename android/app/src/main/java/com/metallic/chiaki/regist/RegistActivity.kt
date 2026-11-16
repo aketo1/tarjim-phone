@@ -23,6 +23,7 @@ class RegistActivity: AppCompatActivity(), RevealActivity
 	{
 		const val EXTRA_HOST = "regist_host"
 		const val EXTRA_BROADCAST = "regist_broadcast"
+		const val EXTRA_ACCOUNT_ID = "regist_account_id"
 		const val EXTRA_ASSIGN_MANUAL_HOST_ID = "assign_manual_host_id"
 
 		private const val PIN_LENGTH = 8
@@ -49,6 +50,7 @@ class RegistActivity: AppCompatActivity(), RevealActivity
 		binding.hostEditText.setText(intent.getStringExtra(EXTRA_HOST) ?: "255.255.255.255")
 		binding.broadcastCheckBox.isChecked = intent.getBooleanExtra(EXTRA_BROADCAST, false)
 
+		intent.getStringExtra(EXTRA_ACCOUNT_ID)?.let { binding.psnIdEditText.setText(it) }  // filled in by Tarjim after the sign-in
 		binding.registButton.setOnClickListener { doRegist() }
 
 		binding.ps4VersionRadioGroup.check(when(viewModel.ps4Version.value ?: RegistViewModel.ConsoleVersion.PS5) {

@@ -22,6 +22,13 @@ class Store(private val context: Context)
 	var console: String
 		get() = prefs.getString("console", "") ?: ""
 		set(v) { prefs.edit().putString("console", v.trim()).apply() }
+	/** The second PSN account's ID as Remote Play wants it (base64), learned from Sony's sign-in. */
+	var account: String
+		get() = prefs.getString("account", "") ?: ""
+		set(v) { prefs.edit().putString("account", v).apply() }
+	var accountName: String
+		get() = prefs.getString("account_name", "") ?: ""
+		set(v) { prefs.edit().putString("account_name", v).apply() }
 	var lastProfile: String
 		get() = prefs.getString("profile", "default") ?: "default"
 		set(v) { prefs.edit().putString("profile", v).apply() }

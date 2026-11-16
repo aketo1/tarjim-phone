@@ -89,11 +89,18 @@ class TarjimActivity : Activity()
 			else View.SYSTEM_UI_FLAG_VISIBLE
 		}
 
-		/** Open the form that links this phone to the PS5 (Account ID and the PIN from the console). */
+		/**
+		 * Link this phone to the PS5. First time: Sony's sign-in for the second account (which gives
+		 * its Account ID), then the PIN form. `fresh` forces the sign-in again (another account).
+		 */
 		@JavascriptInterface
-		fun register(host: String) = runOnUiThread {
-			startActivity(Intent(this@TarjimActivity, RegistActivity::class.java)
-				.putExtra(RegistActivity.EXTRA_HOST, host).putExtra(RegistActivity.EXTRA_BROADCAST, false))
+		fun register(host: String, fresh: Boolean) = runOnUiThread {
+			val account = Store(this@TarjimActivity).account
+			if(account.isEmpty() || fresh)
+				startActivity(Intent(this@TarjimActivity, PsnLoginActivity::class.java).putExtra(RegistActivity.EXTRA_HOST, host))
+			else
+				startActivity(Intent(this@TarjimActivity, RegistActivity::class.java).putExtra(RegistActivity.EXTRA_HOST, host)
+					.putExtra(RegistActivity.EXTRA_BROADCAST, false).putExtra(RegistActivity.EXTRA_ACCOUNT_ID, account))
 		}
 
 		@JavascriptInterface

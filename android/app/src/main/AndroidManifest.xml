@@ -65,6 +65,12 @@
             </intent-filter>
         </activity>
 
+        <activity
+            android:name=".tarjim.PsnLoginActivity"
+            android:theme="@style/TarjimTheme"
+            android:windowSoftInputMode="adjustResize"
+            android:configChanges="keyboard|keyboardHidden|orientation|screenSize" />
+
         <service
             android:name=".tarjim.TarjimService"
             android:exported="false"

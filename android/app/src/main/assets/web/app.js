@@ -686,7 +686,10 @@ async function loadSetup() {
   if (document.activeElement !== ps5) ps5.value = v.console;
   const linked = $("#su-linked");
   linked.className = `linked ${v.consoles.length ? "" : "none"}`;
-  linked.textContent = v.consoles.length ? `الجوال مربوط بـ${v.consoles.join("، ")} ✓` : "الجوال مو مربوط بالـPS5 للحين.";
+  linked.textContent = v.consoles.length
+    ? `الجوال مربوط بـ${v.consoles.join("، ")} ✓${v.account && v.account !== "محفوظ" ? ` (الحساب: ${v.account})` : ""}`
+    : "الجوال مو مربوط بالـPS5 للحين.";
+  $("#su-relogin").hidden = !v.account;
   $("#su-link").textContent = v.consoles.length ? "اربط من جديد" : "اربط الـPS5";
   $("#su-link").className = v.consoles.length ? "btn soft" : "btn";
   const free = !!window.TarjimApp?.batteryExempt?.();
@@ -704,7 +707,12 @@ for (const [id, key] of [["#su-tv", "tv"], ["#su-ps5", "console"]]) {
 $("#su-link").addEventListener("click", () => {
   const host = $("#su-ps5").value.trim();
   if (!ADDRESS.test(host)) return toast("اكتب عنوان الـPS5 أول");
-  window.TarjimApp?.register?.(host);
+  window.TarjimApp?.register?.(host, false);
+});
+$("#su-relogin").addEventListener("click", () => {
+  const host = $("#su-ps5").value.trim();
+  if (!ADDRESS.test(host)) return toast("اكتب عنوان الـPS5 أول");
+  window.TarjimApp?.register?.(host, true);
 });
 $("#su-batt").addEventListener("click", () => window.TarjimApp?.askBattery?.());
 

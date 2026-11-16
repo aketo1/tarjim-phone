@@ -180,6 +180,32 @@ class TarjimEngine(private val context: Context, private val connectInfo: Connec
 		}
 	}
 
+	/** The newest PS5 picture, small, for the settings' reading-area editor. Null when no picture is flowing. */
+	fun frameJpeg(): ByteArray?
+	{
+		val r = reader ?: return null
+		if(!status.consoleOk) return null
+		val bitmap = Bitmap.createBitmap(960, 540, Bitmap.Config.ARGB_8888)
+		val wait = java.util.concurrent.CountDownLatch(1)
+		var ok = false
+		try
+		{
+			PixelCopy.request(r.surface, bitmap, { result -> ok = result == PixelCopy.SUCCESS; wait.countDown() }, handler)
+			if(!wait.await(1500, TimeUnit.MILLISECONDS) || !ok) return null
+			val out = ByteArrayOutputStream()
+			bitmap.compress(Bitmap.CompressFormat.JPEG, 78, out)
+			return out.toByteArray()
+		}
+		catch(e: Exception)
+		{
+			return null
+		}
+		finally
+		{
+			bitmap.recycle()
+		}
+	}
+
 	// -- the two connections -------------------------------------------------------
 
 	private fun connectTv()

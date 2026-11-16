@@ -469,7 +469,7 @@ body.still .subs .tv-ar { opacity: 1; }
 
 /* ---------- inside the phone app ---------- */
 body:not(.phoneapp) .only-app { display: none !important; }
-body.phoneapp .only-local, body.phoneapp #region-shot, body.phoneapp #bg [data-v="cover"] { display: none !important; }
+body.phoneapp .only-local, body.phoneapp #bg [data-v="cover"] { display: none !important; }
 body.phoneapp #bg { grid-template-columns: 1fr 1fr; }
 body.phoneapp .rail nav { justify-content: space-around; }
 #rest { width: 100%; height: 48px; }
