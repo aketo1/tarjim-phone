@@ -38,7 +38,8 @@ class TarjimService : Service()
 		val info = intent?.getParcelableExtra<ConnectInfo>(EXTRA_CONNECT_INFO)
 		val tv = intent?.getStringExtra(EXTRA_TV)
 		val game = intent?.getStringExtra(EXTRA_PROFILE) ?: "default"
-		if(info == null || tv.isNullOrBlank())
+		val xbox = intent?.getBooleanExtra(EXTRA_XBOX, false) ?: false
+		if((info == null && !xbox) || tv.isNullOrBlank())
 		{
 			stopSelf()
 			return START_NOT_STICKY
@@ -66,6 +67,7 @@ class TarjimService : Service()
 			wifiLock = wifi.createWifiLock(WifiManager.WIFI_MODE_FULL_HIGH_PERF, "tarjim:wifi").apply { acquire() }
 			val e = TarjimEngine(applicationContext, info, tv, Store(applicationContext), game)
 			e.onStatus = { s -> status = s; for(l in listeners) l("status") }
+			e.onRestartXbox = { for(l in listeners) l("xbox") }
 			e.onLine = { line ->
 				synchronized(lines) { lines.add(line); while(lines.size > 60) lines.removeAt(0) }
 				lastLine = line
@@ -102,6 +104,7 @@ class TarjimService : Service()
 		const val EXTRA_CONNECT_INFO = "connect_info"
 		const val EXTRA_TV = "tv"
 		const val EXTRA_PROFILE = "profile"
+		const val EXTRA_XBOX = "xbox"
 		const val ACTION_STOP = "dev.tarjim.mobile.STOP"
 		private const val CHANNEL = "tarjim"
 
@@ -115,9 +118,11 @@ class TarjimService : Service()
 		/** Called (from any thread) with "status" or "line" when something changed. */
 		val listeners = CopyOnWriteArrayList<(String) -> Unit>()
 
-		fun start(context: Context, info: ConnectInfo, tv: String, profile: String)
+		/** `info` null: the console is an Xbox and the picture comes from the page. */
+		fun start(context: Context, info: ConnectInfo?, tv: String, profile: String)
 		{
-			val intent = Intent(context, TarjimService::class.java).putExtra(EXTRA_CONNECT_INFO, info).putExtra(EXTRA_TV, tv).putExtra(EXTRA_PROFILE, profile)
+			val intent = Intent(context, TarjimService::class.java).putExtra(EXTRA_TV, tv).putExtra(EXTRA_PROFILE, profile).putExtra(EXTRA_XBOX, info == null)
+			if(info != null) intent.putExtra(EXTRA_CONNECT_INFO, info)
 			if(Build.VERSION.SDK_INT >= 26) context.startForegroundService(intent) else context.startService(intent)
 		}
 

@@ -29,6 +29,20 @@ class Store(private val context: Context)
 	var accountName: String
 		get() = prefs.getString("account_name", "") ?: ""
 		set(v) { prefs.edit().putString("account_name", v).apply() }
+	/** "ps5" or "xbox": which console the picture comes from. */
+	var kind: String
+		get() = prefs.getString("kind", "ps5") ?: "ps5"
+		set(v) { prefs.edit().putString("kind", if(v == "xbox") "xbox" else "ps5").apply() }
+	var xboxId: String
+		get() = prefs.getString("xbox_id", "") ?: ""
+		set(v) { prefs.edit().putString("xbox_id", v).apply() }
+	var xboxName: String
+		get() = prefs.getString("xbox_name", "") ?: ""
+		set(v) { prefs.edit().putString("xbox_name", v).apply() }
+	/** Microsoft refresh token: a secret, private to the app. */
+	var xboxRefresh: String
+		get() = prefs.getString("xbox_refresh", "") ?: ""
+		set(v) { prefs.edit().putString("xbox_refresh", v).apply() }
 	var lastProfile: String
 		get() = prefs.getString("profile", "default") ?: "default"
 		set(v) { prefs.edit().putString("profile", v).apply() }

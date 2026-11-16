@@ -168,11 +168,50 @@ the phone, heat and battery use over a long session.
 
 | Item | Notes |
 | --- | --- |
-| Xbox | Asked for by the user on 2026-11-16. Not started in either app. It is a different protocol from the PS5's: Microsoft's home streaming needs a Microsoft sign-in and a WebRTC video receiver, and none of the PS5 code carries over. It also needs an Xbox to test on; whether the user has one is not known yet |
 | A stronger translator on the phone | The laptop's model would need CTranslate2 built for Android |
 | Installing the TV app from the phone | Needs adb-over-network from the phone |
 
-## 9. Rules for whoever changes this
+## 9. Xbox (built, not tested)
+
+Chosen in Setup (PlayStation 5 or Xbox) with the linking steps explained
+there. Code: `XboxAuth.kt`, the Xbox branches in `TarjimEngine.kt`
+(`feedJpeg`, `xboxState`), `PhoneServer.kt` (routes `/api/xbox*`,
+`/api/console`, the `/v5`, `/v6` proxy), `assets/web/xbox.js`. On the phone
+the page sends only the reading area of each frame.
+
+Xbox home streaming ("Remote Play") is WebRTC, a different protocol from
+Sony's. Both programs show their interface in a browser view (Edge WebView2 on
+the laptop, Android WebView on the phone), and a browser speaks WebRTC
+natively. So the page itself receives the stream, with the open-source
+`xbox-xcloud-player` library (MIT, bundled as `xCloudPlayer.min.js`; glue in
+`xbox.js`), draws frames to a canvas and posts them as JPEG to the local
+server, which feeds the normal reading and translating code. The library's API
+calls (`/v5/...`, `/v6/...`) go to the local server, which forwards them to
+Xbox with the token added.
+
+Sign-in is Microsoft's device-code flow, ported from `xal-node` 1.1.5
+(`dist/msal.js`): the user types a short code at microsoft.com/link; then
+Xbox Live user token, XSTS token for `http://gssv.xboxlive.com/`, and the
+home-streaming token (`xhome.gssv-play-prod.xboxlive.com/v2/login/user`) with
+its region host. Only the refresh token is stored, as a secret.
+
+No controller input is sent: the input channel is opened because the console
+requires it and nothing is ever put into it; the stream's media elements are
+muted.
+
+**What was verified:** Microsoft answers the device-code request made by this
+code with a valid code. The token chain, the frame hand-off and the error
+texts are covered by tests with stand-in servers.
+**What was not:** everything after the sign-in. No Microsoft account was
+signed in and no Xbox was available: listing consoles, starting a session,
+the WebRTC connection, picture quality through JPEG, whether the player's own
+controller and TV picture stay untouched, and behaviour when the window is
+minimised have never been observed. Treat it as written, not as working.
+
+The Sony sign-in for the PS5 Account ID (`PsnLoginActivity`) is in the same
+state: written from the laptop library's request shapes, never run.
+
+## 10. Rules for whoever changes this
 
 - Never send controller input and never store a PSN password. The sign-in
   happens on Sony's page; only the redirect's one-time code is used.

@@ -32,6 +32,7 @@ import java.util.concurrent.TimeUnit
 class PhoneServer private constructor(private val context: Context)
 {
 	val store = Store(context)
+	val xbox = XboxAuth(store)
 	private val server = ServerSocket(0, 16, InetAddress.getByName("127.0.0.1"))
 	val url get() = "http://127.0.0.1:${server.localPort}/"
 	private val streams = java.util.concurrent.CopyOnWriteArrayList<LinkedBlockingQueue<String>>()
@@ -49,6 +50,7 @@ class PhoneServer private constructor(private val context: Context)
 		}, "tarjim-http").apply { isDaemon = true; start() }
 		TarjimService.listeners.add { what ->
 			if(what == "line") TarjimService.lastLine?.let { publish("line", lineJson(it)) }
+			else if(what == "xbox") publish("xbox", xboxStart())
 			else
 			{
 				val live = liveJson()
@@ -94,10 +96,42 @@ class PhoneServer private constructor(private val context: Context)
 		return state == BatteryManager.BATTERY_STATUS_CHARGING || state == BatteryManager.BATTERY_STATUS_FULL
 	}
 
+	/** Tells the page to start receiving the Xbox stream, and which part of the picture to send back. */
+	private fun xboxStart(): JSONObject
+	{
+		val look = Look(store.load(TarjimService.profile))
+		return JSONObject().put("action", "start").put("id", store.xboxId).put("crop", JSONObject()
+			.put("left", look.left.toDouble()).put("top", look.top.toDouble()).put("right", look.right.toDouble()).put("bottom", look.bottom.toDouble()))
+	}
+
+	private fun xboxView() = JSONObject().put("kind", store.kind).put("linked", xbox.linked).put("state", xbox.linkState)
+		.put("error", xbox.linkError).put("code", if(xbox.linkState == "waiting") xbox.userCode else "").put("url", xbox.verificationUri)
+		.put("console", if(store.xboxId.isEmpty()) JSONObject.NULL else JSONObject().put("id", store.xboxId).put("name", store.xboxName))
+
+	private fun xboxCheck(): JSONObject
+	{
+		val s = TarjimService.status
+		val on = TarjimService.running
+		val tvSet = Regex("""\d{1,3}(\.\d{1,3}){3}""").matches(store.tv)
+		val chosen = store.xboxId.isNotEmpty()
+		fun item(id: String, ok: Boolean, title: String, hint: String) = JSONObject().put("id", id).put("ok", ok).put("title", title).put("hint", hint)
+		val items = JSONArray()
+			.put(item("power", charging(), "الجوال على الشاحن", "شبّك الشاحن: الترجمة شغل متواصل وتاكل بطارية."))
+			.put(item("models", !on || s.translatorOk, "المترجم جاهز", s.translator))
+			.put(item("tv", if(on) s.tvOk else tvSet, "التلفزيون", if(!tvSet) "اكتب عنوان التلفزيون في «الإعداد»." else s.tv))
+			.put(item("ps5", if(on) s.consoleOk else chosen, "الإكس بوكس", if(!chosen) "اختر الإكس بوكس من «الإعداد»." else s.console))
+			.put(item("link", xbox.linked, "الجوال مربوط بحساب الإكس بوكس", "اربط حساب مايكروسوفت من «الإعداد»."))
+		val done = tvSet && chosen && xbox.linked
+		return JSONObject().put("items", items).put("ready", done).put("kind", "xbox").put("tv_ip", store.tv).put("tv_app", s.tvOk)
+			.put("tv_model", JSONObject.NULL).put("ps5_host", JSONObject.NULL).put("ps5_name", if(chosen) store.xboxName else JSONObject.NULL)
+			.put("ps5_user", if(done) "xbox" else JSONObject.NULL).put("setup_done", done).put("consoles", JSONArray())
+	}
+
 	private fun registered() = runBlocking { getDatabase(context).registeredHostDao().getAll().first() }
 
 	private fun checkJson(): JSONObject
 	{
+		if(store.kind == "xbox") return xboxCheck()
 		val s = TarjimService.status
 		val on = TarjimService.running
 		val hosts = registered()
@@ -172,6 +206,16 @@ class PhoneServer private constructor(private val context: Context)
 	{
 		val address = Regex("""\d{1,3}(\.\d{1,3}){3}""")
 		if(!address.matches(store.tv)) return error("اكتب عنوان التلفزيون في «الإعداد» أول.")
+		if(store.kind == "xbox")
+		{
+			if(!xbox.linked) return error("الجوال مو مربوط بحساب الإكس بوكس. افتح «الإعداد» واربط حساب مايكروسوفت.")
+			if(store.xboxId.isEmpty()) return error("اختر الإكس بوكس من «الإعداد» أول.")
+			store.lastProfile = profile
+			TarjimService.profile = profile
+			TarjimService.start(context, null, store.tv, profile)
+			publish("xbox", xboxStart())  // the page (this app's WebView) receives the stream
+			return JSONObject().put("started", true)
+		}
 		if(!address.matches(store.console)) return error("اكتب عنوان الـPS5 في «الإعداد» أول.")
 		val host = registered().firstOrNull() ?: return error("الجوال مو مربوط بالـPS5. افتح «الإعداد» واضغط «اربط الـPS5».")
 		// Tarjim reads a fixed, light picture: 1080p, 30 frames, H.264.
@@ -195,8 +239,11 @@ class PhoneServer private constructor(private val context: Context)
 				JSONObject().put("live", liveJson()).put("task", JSONObject().put("name", "").put("running", false).put("log", JSONArray()))
 					.put("profiles", profiles).put("last_profile", store.lastProfile).put("guide_seen", true)
 					.put("setup_done", checkJson().optBoolean("setup_done")).put("remote", false).put("now", System.currentTimeMillis() / 1000.0)
+					.put("console", store.kind)
 			}
 			"/api/check" -> checkJson()
+			"/api/xbox" -> xboxView()
+			"/api/xbox/consoles" -> JSONObject().put("consoles", xbox.consoles())
 			"/api/profile" -> profileView(query["name"] ?: "default")
 			"/api/setup" -> JSONObject().put("tv", store.tv).put("console", store.console).put("consoles", checkJson().getJSONArray("consoles"))
 				.put("account", store.accountName.ifEmpty { if(store.account.isNotEmpty()) "محفوظ" else "" })
@@ -214,7 +261,23 @@ class PhoneServer private constructor(private val context: Context)
 		return when(path)
 		{
 			"/api/start" -> if(TarjimService.running) JSONObject().put("started", false) else start(body.optString("profile", "default"))
-			"/api/stop" -> { TarjimService.stop(context); JSONObject().put("ok", true) }
+			"/api/stop" -> { TarjimService.stop(context); publish("xbox", JSONObject().put("action", "stop")); JSONObject().put("ok", true) }
+			"/api/console" -> { store.kind = body.optString("kind"); xboxView() }
+			"/api/xbox/link" -> xbox.startLink()
+			"/api/xbox/open" ->
+			{
+				context.startActivity(Intent(Intent.ACTION_VIEW, android.net.Uri.parse(xbox.verificationUri)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+				JSONObject().put("ok", true)
+			}
+			"/api/xbox/select" ->
+			{
+				store.xboxId = body.optString("id").take(80)
+				store.xboxName = body.optString("name", "Xbox").take(60)
+				store.kind = "xbox"
+				xboxView()
+			}
+			"/api/xbox/forget" -> { xbox.forget(); xboxView() }
+			"/api/xbox/state" -> { TarjimService.engine?.xboxState(body.optString("state"), body.optString("error")); JSONObject().put("ok", true) }
 			"/api/profile" -> profileSave(body)
 			"/api/profile/new" -> profileView(store.create(body.optString("title").trim().take(60)))
 			"/api/setup" ->
@@ -265,7 +328,7 @@ class PhoneServer private constructor(private val context: Context)
 		val target = request[1]
 		var length = 0
 		for(line in lines.drop(1)) if(line.startsWith("content-length:", true)) length = line.substringAfter(":").trim().toIntOrNull() ?: 0
-		val raw = ByteArray(length.coerceIn(0, 400_000))
+		val raw = ByteArray(length.coerceIn(0, 3_000_000))
 		var read = 0
 		while(read < raw.size) { val n = input.read(raw, read, raw.size - read); if(n < 0) break; read += n }
 		val path = target.substringBefore("?")
@@ -278,6 +341,19 @@ class PhoneServer private constructor(private val context: Context)
 		val out = client.getOutputStream()
 
 		if(path == "/api/events") return events(out)
+		if(path == "/api/xbox/frame")  // a picture of the Xbox stream's reading area from the page: raw JPEG
+		{
+			val ok = TarjimService.engine?.feedJpeg(raw, query["x"]?.toIntOrNull() ?: 0, query["y"]?.toIntOrNull() ?: 0,
+				query["fw"]?.toIntOrNull() ?: 1920, query["fh"]?.toIntOrNull() ?: 1080) ?: false
+			return send(out, 200, "application/json", "{\"ok\":$ok}".toByteArray())
+		}
+		if(path.startsWith("/v5/") || path.startsWith("/v6/"))  // the page's Xbox streaming calls
+		{
+			val info = lines.firstOrNull { it.startsWith("x-ms-device-info:", true) }?.substringAfter(":")?.trim()
+			val answer = try { xbox.proxy(method, target, if(method == "POST") raw else null, info) }
+			catch(e: Exception) { return send(out, 502, "application/json", JSONObject().put("error", e.message ?: "xbox").toString().toByteArray()) }
+			return send(out, answer.status, "application/json; charset=utf-8", answer.body)
+		}
 		if(path.startsWith("/api/"))
 		{
 			val body = try { if(raw.isNotEmpty()) JSONObject(String(raw, Charsets.UTF_8)) else JSONObject() } catch(e: Exception) { JSONObject() }

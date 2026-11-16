@@ -93,7 +93,7 @@ document.addEventListener("keydown", e => {
 
 /* ---------------------------------- home ---------------------------------- */
 
-const STEP_TEXT = { models: "أحمّل القارئ والمترجم…", tv: "أشغّل تطبيق التلفزيون…", ps5: "أتصل بصورة الـPS5…" };
+const STEP_TEXT = { models: "أحمّل القارئ والمترجم…", tv: "أشغّل تطبيق التلفزيون…", ps5: "أتصل بصورة الجهاز…" };
 const DEMO = [
   ["We should leave before the storm gets here.", "يجب أن نغادر قبل وصول العاصفة."],
   ["Keep your voice down and stay close.", "اخفض صوتك وابقَ قريباً."],
@@ -284,8 +284,11 @@ async function runCheck() {
   const c = S.check;
   const by = Object.fromEntries(c.items.map(i => [i.id, i]));
   const ps5ok = by.ps5.ok && by.link.ok;
+  const xbox = c.kind === "xbox";
+  S.kind = xbox ? "xbox" : "ps5";
+  $("#n-ps5-n").textContent = xbox ? "الإكس بوكس" : "الـPS5";
   setNode("n-ps5", ps5ok ? "ok" : "bad",
-    ps5ok ? `${c.ps5_name || "متصل"} · شغّال` : (!by.link.ok ? by.link.hint : by.ps5.hint), c.ps5_host);
+    ps5ok ? `${c.ps5_name || "متصل"} · ${xbox ? "مربوط" : "شغّال"}` : (!by.link.ok ? by.link.hint : by.ps5.hint), c.ps5_host);
   setNode("n-pc", !by.models.ok ? "bad" : by.power.ok ? "ok" : "warn",
     !by.models.ok ? by.models.hint : by.power.ok ? "على الشاحن · يقرأ ويترجم" : "على البطارية: الترجمة أبطأ. شبّك الشاحن.");
   setNode("n-tv", by.tv.ok ? "ok" : "bad", by.tv.ok ? `${c.tv_model || "متصل"} · جاهز` : by.tv.hint, c.tv_ip);
@@ -681,6 +684,12 @@ window.onAppResume = () => {
 async function loadSetup() {
   let v;
   try { v = await api("/api/setup"); } catch (e) { return toast(e.message); }
+  // PlayStation or Xbox: one card each; the Xbox one is the same linking steps as on the laptop.
+  const xboxCard = $("#su-xbox"), ps5Card = $("#su-ps5card");
+  xboxCard.hidden = S.kind !== "xbox";
+  ps5Card.hidden = S.kind === "xbox";
+  if (S.kind === "xbox") { if (!xboxCard.firstChild || !$("#x-link", xboxCard)) xboxCard.replaceChildren(xboxGuide()); }
+  else { xboxCard.replaceChildren(); if (!ps5Card.dataset.wired) { ps5Card.dataset.wired = "1"; kindSwitch(ps5Card); } }
   const tv = $("#su-tv"), ps5 = $("#su-ps5");
   if (document.activeElement !== tv) tv.value = v.tv;
   if (document.activeElement !== ps5) ps5.value = v.console;
@@ -721,7 +730,7 @@ $("#su-batt").addEventListener("click", () => window.TarjimApp?.askBattery?.());
 const GUIDE = [
   { title: "كيف يشتغل", done: () => true },
   { title: "التلفزيون", done: c => !!c?.tv_ip },
-  { title: "الـPS5", done: c => !!c?.ps5_user },
+  { title: "الجهاز", done: c => !!c?.ps5_user },
   { title: "ابدأ", done: () => false },
 ];
 
@@ -816,8 +825,11 @@ function renderGuide() {
     });
   }
 
-  if (S.guideStep === 2) {
+  if (S.guideStep === 2 && S.kind === "xbox") {
+    view = xboxGuide();
+  } else if (S.guideStep === 2) {
     view = html`
+      <div class="seg kind" id="kind"><button data-v="ps5" class="on">PlayStation 5</button><button data-v="xbox">Xbox</button></div>
       <h2>اربط الـPS5</h2>
       <p class="lead">اللابتوب يحتاج حساب PSN <b>ثاني</b> عشان ياخذ نسخة الصورة. لو استخدمت نفس الحساب اللي تلعب فيه، يدك بتفصل.</p>
       <ol class="todo">
@@ -840,6 +852,7 @@ function renderGuide() {
       btn.disabled = true;
       try { await fn(); } catch (err) { say("bad", err.message); } finally { btn.disabled = false; }
     };
+    kindSwitch(view);
     $("#p-find", view).addEventListener("click", e => busy(e.currentTarget, async () => {
       $("#p-found").textContent = "أدوّر…";
       const r = await api("/api/ps5/discover", {});
@@ -887,6 +900,99 @@ function renderGuide() {
   if (S.task?.running) setBusy(true);
 }
 
+/* ---- Xbox: choosing it, linking the Microsoft account, picking the console ---- */
+
+function kindSwitch(view) {
+  $$("#kind button", view).forEach(b => b.addEventListener("click", async () => {
+    if (S.live.state !== "idle") return toast("وقّف الترجمة أول");
+    try { await api("/api/console", { kind: b.dataset.v }); } catch (e) { return toast(e.message); }
+    S.kind = b.dataset.v;
+    S.check = null;
+    await runCheck();
+    if (S.app) loadSetup(); else renderGuide();
+  }));
+}
+
+let xboxPoll;
+function xboxGuide() {
+  const view = html`
+    <div class="seg kind" id="kind"><button data-v="ps5">PlayStation 5</button><button data-v="xbox" class="on">Xbox</button></div>
+    <h2>اربط الإكس بوكس</h2>
+    <p class="lead">ترجِم ياخذ نسخة من صورة الإكس بوكس عن طريق «اللعب عن بُعد» من مايكروسوفت، بحساب مايكروسوفت اللي على جهازك. ما يرسل أي ضغطة يد للجهاز.</p>
+    <div class="note">تجريبي: دعم الإكس بوكس جديد وما انجرّب على جهاز حقيقي للحين. لو ما اشتغل معك قل لنا وش طلع.</div>
+    <ol class="todo" style="margin-top:18px">
+      <li><div>على الإكس بوكس: <span class="path">الإعدادات ‹ الأجهزة والاتصالات ‹ الميزات عن بُعد</span> وفعّل <b>«تمكين الميزات عن بُعد»</b>. وخلّ وضع الطاقة <b>«السكون»</b>.</div></li>
+      <li><div>اربط حساب مايكروسوفت (نفس الحساب اللي على الإكس بوكس). كلمة السر تنكتب في صفحة مايكروسوفت، وترجِم ما يشوفها.
+        <div class="action"><button class="btn" id="x-link">اربط حساب مايكروسوفت</button><button class="textbtn" id="x-forget" hidden>افصل الحساب</button></div>
+        <div id="x-code"></div></div></li>
+      <li><div>اختر جهازك:
+        <div class="action"><button class="btn soft" id="x-find">دوّر على أجهزتي</button></div>
+        <div class="consoles" id="x-consoles"></div></div></li>
+    </ol>
+    <div id="x-result"></div>`;
+  kindSwitch(view);
+  const say = (cls, msg) => $("#x-result", view).replaceChildren(el("div", `note ${cls}`, msg));
+  const showConsoles = async () => {
+    const box = $("#x-consoles", view);
+    box.replaceChildren(el("span", "muted", "أدوّر…"));
+    try {
+      const r = await api("/api/xbox/consoles");
+      const st = await api("/api/xbox");
+      if (!r.consoles.length) return box.replaceChildren(el("span", "muted", "ما لقيت أجهزة على هذا الحساب. تأكد إن «الميزات عن بُعد» مفعّلة."));
+      box.replaceChildren(...r.consoles.map(c => {
+        const b = el("button", st.console?.id === c.id ? "on" : "");
+        b.append(el("b", "", c.name), el("small", "", [c.type, c.power].filter(Boolean).join(" · ")));
+        b.addEventListener("click", async () => {
+          await api("/api/xbox/select", { id: c.id, name: c.name }).catch(e => toast(e.message));
+          say("good", `تم: «${c.name}» هو جهازك ✓ ارجع للرئيسية واضغط «ابدأ الترجمة».`);
+          S.check = null; runCheck(); showConsoles();
+        });
+        return b;
+      }));
+    } catch (e) { box.replaceChildren(el("span", "muted", e.message)); }
+  };
+  const refresh = async () => {
+    let st;
+    try { st = await api("/api/xbox"); } catch { return; }
+    const code = $("#x-code", view);
+    if (!code.isConnected) return clearInterval(xboxPoll);
+    $("#x-forget", view).hidden = !st.linked;
+    $("#x-link", view).textContent = st.linked ? "اربط حساب ثاني" : "اربط حساب مايكروسوفت";
+    if (st.state === "waiting") {
+      const box = html`<p class="muted" style="margin:10px 0 6px">افتح الصفحة واكتب هذا الرمز، ثم سجّل دخولك:</p>
+        <span class="bigcode"></span>
+        <div class="action"><button class="btn soft" id="x-open">افتح صفحة مايكروسوفت</button><span class="muted">microsoft.com/link · أنتظرك…</span></div>`;
+      $(".bigcode", box).textContent = st.code;
+      $("#x-open", box).addEventListener("click", () => api("/api/xbox/open", {}).catch(() => {}));
+      if ($(".bigcode", code)?.textContent !== st.code) code.replaceChildren(box);
+    } else {
+      code.replaceChildren();
+      clearInterval(xboxPoll);
+      if (st.state === "linked") { say("good", "انربط الحساب ✓ الحين اختر جهازك."); showConsoles(); }
+      if (st.state === "failed") say("bad", "ما اكتمل الربط (الرمز يصلح ربع ساعة). اضغط «اربط» وجرّب مرة ثانية.");
+    }
+  };
+  $("#x-link", view).addEventListener("click", async e => {
+    e.currentTarget.disabled = true;
+    try { await api("/api/xbox/link", {}); clearInterval(xboxPoll); xboxPoll = setInterval(refresh, 2000); await refresh(); }
+    catch (err) { say("bad", err.message); }
+    e.currentTarget.disabled = false;
+  });
+  $("#x-forget", view).addEventListener("click", async () => {
+    if (!await ask("تفصل حساب مايكروسوفت؟", "ترجِم ينسى الحساب والجهاز المختار. تقدر تربط من جديد بأي وقت.", "افصله")) return;
+    await api("/api/xbox/forget", {}).catch(e => toast(e.message));
+    S.check = null; runCheck();
+    if (S.app) loadSetup(); else renderGuide();
+  });
+  $("#x-find", view).addEventListener("click", showConsoles);
+  api("/api/xbox").then(st => {
+    $("#x-forget", view).hidden = !st.linked;
+    if (st.linked) { $("#x-link", view).textContent = "اربط حساب ثاني"; showConsoles(); }
+    if (st.state === "waiting") { clearInterval(xboxPoll); xboxPoll = setInterval(refresh, 2000); refresh(); }
+  }).catch(() => {});
+  return view;
+}
+
 function setBusy(on) {
   $$("#tv-setup, #tv-test, #tv-revert").forEach(b => b.disabled = on);
 }
@@ -904,6 +1010,13 @@ function connect() {
   });
   es.addEventListener("line", e => addLine(JSON.parse(e.data)));
   es.addEventListener("stats", e => renderStats(JSON.parse(e.data)));
+  // The Xbox picture is received by the program's own window: start and stop it with the session.
+  es.addEventListener("xbox", e => {
+    if (S.remote) return;
+    const d = JSON.parse(e.data);
+    if (d.action === "start") Xbox.start(d.id, d.crop ? { crop: d.crop, every: 70 } : {});
+    else Xbox.stop();
+  });
   es.addEventListener("phone", () => { if ($("#view-phone").classList.contains("on")) loadPhone(); toast("انربط جوال جديد ✓"); });
   es.addEventListener("ask-close", async () => {
     if ($("#dlg-ask").open) return;
@@ -994,6 +1107,7 @@ async function boot() {
   S.task = st.task;
   S.still = q.has("still");
   document.body.classList.toggle("still", S.still);
+  S.kind = st.console || "ps5";
   S.selected = st.live.profile || st.last_profile || (st.profiles.find(p => p.name !== "default") || st.profiles[0])?.name;
   fillGames();
   selectGame(S.selected);

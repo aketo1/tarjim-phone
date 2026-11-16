@@ -85,7 +85,7 @@
         <div class="alert" id="alert" hidden></div>
 
         <ol class="path" id="path">
-          <li id="n-ps5"><span class="pin"></span><div><b>الـPS5</b><small id="n-ps5-t">أفحص…</small></div><em id="n-ps5-s"></em></li>
+          <li id="n-ps5"><span class="pin"></span><div><b id="n-ps5-n">الـPS5</b><small id="n-ps5-t">أفحص…</small></div><em id="n-ps5-s"></em></li>
           <li id="n-pc"><span class="pin"></span><div><b>اللابتوب</b><small id="n-pc-t">أفحص…</small></div><em id="n-pc-s"></em></li>
           <li id="n-tv"><span class="pin"></span><div><b>التلفزيون</b><small id="n-tv-t">أفحص…</small></div><em id="n-tv-s"></em></li>
         </ol>
@@ -252,7 +252,9 @@
         <input class="text ltr" id="su-tv" placeholder="192.168.1.50" inputmode="decimal" maxlength="15" aria-label="عنوان التلفزيون">
         <p class="muted">افتح تطبيق «ترجِم» على التلفزيون وتلقى العنوان مكتوب بالأصفر. لو التطبيق مو على التلفزيون، يتثبّت مرة وحدة من نسخة الكمبيوتر.</p>
       </div>
-      <div class="card">
+      <div class="card" id="su-xbox" hidden></div>
+      <div class="card" id="su-ps5card">
+        <div class="seg kind" id="kind"><button data-v="ps5" class="on">PlayStation 5</button><button data-v="xbox">Xbox</button></div>
         <div class="card-head"><h3>الـPS5</h3><span class="muted" id="su-ps5-state"></span></div>
         <input class="text ltr" id="su-ps5" placeholder="192.168.1.60" inputmode="decimal" maxlength="15" aria-label="عنوان الـPS5">
         <p class="muted">في الـPS5: الإعدادات ‹ الشبكة ‹ عرض حالة الاتصال ‹ عنوان IP.</p>
@@ -375,6 +377,7 @@
   </form>
 </dialog>
 
+<script src="xbox.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

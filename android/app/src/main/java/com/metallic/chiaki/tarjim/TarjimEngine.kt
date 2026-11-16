@@ -53,7 +53,7 @@ import kotlin.math.min
  * It never sends controller input: [Session.setControllerState] is not called anywhere
  * in Tarjim mode, and the session's sound is muted.
  */
-class TarjimEngine(private val context: Context, private val connectInfo: ConnectInfo, private val tvHost: String,
+class TarjimEngine(private val context: Context, private val connectInfo: ConnectInfo?, private val tvHost: String,
 	private val store: Store, private val profile: String)
 {
 	data class Status(
@@ -120,6 +120,64 @@ class TarjimEngine(private val context: Context, private val connectInfo: Connec
 		onStatus?.invoke(status)
 	}
 
+	/** Xbox: the picture arrives from the page (WebRTC in the WebView) instead of a Remote Play session. */
+	val xbox get() = connectInfo == null
+	var onRestartXbox: (() -> Unit)? = null
+
+	/**
+	 * One picture of the Xbox stream's reading area from the page, as JPEG. `x`/`y`: where the
+	 * area sits in the full frame, `fw`/`fh`: the full frame's size (already scaled to 1080 lines).
+	 */
+	fun feedJpeg(data: ByteArray, x: Int, y: Int, fw: Int, fh: Int): Boolean
+	{
+		if(!running || !xbox) return false
+		val bitmap = BitmapFactory.decodeByteArray(data, 0, data.size) ?: return false
+		handler.post {
+			try
+			{
+				val now = SystemClock.elapsedRealtime()
+				frameW = fw
+				frameH = fh
+				lastFrameAt = now
+				frameCount++
+				fpsCount++
+				if(now - fpsAt >= 1000)
+				{
+					val fps = fpsCount
+					fpsCount = 0
+					fpsAt = now
+					update { it.copy(frames = frameCount, fps = fps, consoleOk = true, console = "متصل · الصورة توصل") }
+				}
+				if(up && now - lastKeep >= 250)
+				{
+					link?.keep(listOf(LAYER))
+					lastKeep = now
+				}
+				read(bitmap, x, y, now)
+			}
+			catch(e: Exception)
+			{
+				Log.e(TAG, "xbox frame failed", e)
+			}
+			finally
+			{
+				bitmap.recycle()
+			}
+		}
+		return true
+	}
+
+	/** What the page says about the Xbox stream ("connected", "failed", "closed"). */
+	fun xboxState(state: String, error: String)
+	{
+		if(!xbox) return
+		when(state)
+		{
+			"connected" -> update { it.copy(console = "متصل، أنتظر الصورة…") }
+			"failed", "closed" -> update { it.copy(console = error.ifEmpty { "انقطع اتصال الإكس بوكس. أعيد المحاولة…" }, consoleOk = false, fps = 0) }
+		}
+	}
+
 	fun start()
 	{
 		running = true
@@ -133,7 +191,12 @@ class TarjimEngine(private val context: Context, private val connectInfo: Connec
 			}
 			.addOnFailureListener { e -> update { it.copy(translator = "ما قدرت أنزّل ملف الترجمة (يحتاج إنترنت أول مرة)", error = e.message ?: "") } }
 		handler.post { connectTv() }
-		handler.post { startSession() }
+		if(xbox)
+		{
+			lastFrameAt = SystemClock.elapsedRealtime()
+			update { it.copy(console = "أتصل بالإكس بوكس…") }
+		}
+		else handler.post { startSession() }
 		handler.postDelayed(watchdog, 1000)
 	}
 
@@ -229,6 +292,7 @@ class TarjimEngine(private val context: Context, private val connectInfo: Connec
 
 	private fun startSession()
 	{
+		val connectInfo = connectInfo ?: return
 		if(!running || session != null) return
 		try
 		{
@@ -293,6 +357,16 @@ class TarjimEngine(private val context: Context, private val connectInfo: Connec
 			if(now - fpsAt > 1500 && status.fps != 0) update { it.copy(fps = 0) }
 			if(session != null && now - lastFrameAt > 8000)
 				dropSession("الصورة وقفت. أعيد الاتصال بالـPS5…")
+			if(xbox && now - lastFrameAt > 25000)
+			{
+				// no picture from the page for a while: ask it to start the stream again
+				lastFrameAt = now
+				link?.clear()
+				up = false
+				shown = ""
+				update { it.copy(console = "الصورة وقفت. أعيد الاتصال بالإكس بوكس…", consoleOk = false, fps = 0) }
+				onRestartXbox?.invoke()
+			}
 			if(link?.connected != true)
 			{
 				if(status.tvOk) update { it.copy(tv = "انقطع الاتصال بالتلفزيون. أعيد المحاولة…", tvOk = false) }

@@ -40,6 +40,7 @@ class TarjimActivity : Activity()
 		web.setBackgroundColor(Color.rgb(10, 11, 15))
 		web.settings.javaScriptEnabled = true
 		web.settings.domStorageEnabled = true
+		web.settings.mediaPlaybackRequiresUserGesture = false  // the Xbox stream's video must start by itself
 		web.overScrollMode = View.OVER_SCROLL_NEVER
 		web.addJavascriptInterface(Bridge(), "TarjimApp")
 		web.webViewClient = object : WebViewClient()
