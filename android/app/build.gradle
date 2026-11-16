@@ -70,10 +70,21 @@ android {
         freeCompilerArgs += "-opt-in=kotlin.ExperimentalUnsignedTypes"
     }
 
-    externalNativeBuild {
-        cmake {
-            version "3.22.1"
-            path rootCMakeLists
+    // -PtarjimPrebuilt: skip the native build and use the libraries GitHub built
+    // (app/prebuilt/arm64-v8a, from the "latest" release). OpenSSL cannot be built on Windows.
+    if (!project.hasProperty('tarjimPrebuilt')) {
+        externalNativeBuild {
+            cmake {
+                version "3.22.1"
+                path rootCMakeLists
+            }
+        }
+    } else {
+        sourceSets.main.jniLibs.srcDirs += ['prebuilt']
+    }
+    packagingOptions {
+        jniLibs {
+            pickFirsts += ['**/libc++_shared.so', '**/liboboe.so']
         }
     }
 
