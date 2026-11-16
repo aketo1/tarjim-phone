@@ -1,0 +1,1024 @@
+"use strict";
+
+const $ = (s, root = document) => root.querySelector(s);
+const $$ = (s, root = document) => [...root.querySelectorAll(s)];
+const el = (tag, cls, text) => {
+  const n = document.createElement(tag);
+  if (cls) n.className = cls;
+  if (text !== undefined) n.textContent = text;
+  return n;
+};
+const svg = (paths, cls) => {
+  const t = document.createElement("template");
+  t.innerHTML = `<svg viewBox="0 0 24 24"${cls ? ` class="${cls}"` : ""}>${paths}</svg>`;
+  return t.content.firstChild;
+};
+
+/* ------------------------------ who is asking ------------------------------ */
+// On the laptop the page talks to 127.0.0.1 and needs nothing. On a phone it
+// carries the token it was given when it was paired.
+
+const store = {
+  get(k) { try { return localStorage.getItem(k); } catch { return null; } },
+  set(k, v) { try { v == null ? localStorage.removeItem(k) : localStorage.setItem(k, v); } catch { /* private mode */ } },
+};
+let TOKEN = store.get("tarjim-token");
+const withKey = url => TOKEN ? `${url}${url.includes("?") ? "&" : "?"}k=${encodeURIComponent(TOKEN)}` : url;
+
+async function api(path, body) {
+  const opt = body === undefined ? { headers: {} } : {
+    method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body),
+  };
+  if (TOKEN) opt.headers["X-Tarjim-Token"] = TOKEN;
+  let res;
+  try { res = await fetch(path, opt); } catch { throw new Error("ما قدرت أوصل لترجِم. تأكد إن البرنامج شغّال على اللابتوب."); }
+  if (res.status === 403 && S.remote) { needPairing(); throw new Error("الجوال مو مربوط."); }
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || "صار خطأ غير متوقع.");
+  return data;
+}
+
+let toastTimer;
+function toast(msg) {
+  const t = $("#toast");
+  t.textContent = msg;
+  t.classList.add("on");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove("on"), 2400);
+}
+
+function ask(title, text, yes = "نعم", danger = true) {
+  const d = $("#dlg-ask");
+  $("#ask-title").textContent = title;
+  $("#ask-text").textContent = text;
+  $("#ask-yes").textContent = yes;
+  $("#ask-yes").classList.toggle("danger", danger);
+  return new Promise(resolve => {
+    d.addEventListener("close", () => resolve(d.returnValue === "ok"), { once: true });
+    d.returnValue = "cancel";
+    d.showModal();
+    $("#ask-no").focus();
+  });
+}
+
+const S = {
+  live: { state: "idle" }, check: null, profiles: [], profile: null, guideStep: 0, task: null,
+  remote: false, skew: 0, latencies: [], still: false,
+};
+
+/* ------------------------------- navigation ------------------------------- */
+
+function go(view) {
+  if (!$(`#view-${view}`)) return;
+  $$(".view").forEach(v => v.classList.toggle("on", v.id === `view-${view}`));
+  $$(".nav[data-view]").forEach(b => b.classList.toggle("on", b.dataset.view === view));
+  $("main").scrollTo({ top: 0 });
+  if (view === "game") loadProfile();
+  if (view === "guide") renderGuide();
+  if (view === "phone") loadPhone();
+  if (view === "setup") loadSetup();
+  if (!S.app) window.TarjimApp?.keepAwake?.(view === "screen");
+}
+$$(".nav[data-view]").forEach(b => b.addEventListener("click", () => go(b.dataset.view)));
+document.addEventListener("click", e => {
+  const t = e.target.closest("[data-goto]");
+  if (t) go(t.dataset.goto);
+});
+document.addEventListener("keydown", e => {
+  if (!e.ctrlKey || e.altKey || e.metaKey) return;
+  const visible = $$(".nav[data-view]").filter(b => b.offsetParent !== null);
+  const i = Number(e.key) - 1;
+  if (Number.isInteger(i) && visible[i]) { e.preventDefault(); visible[i].click(); }
+});
+
+/* ---------------------------------- home ---------------------------------- */
+
+const STEP_TEXT = { models: "أحمّل القارئ والمترجم…", tv: "أشغّل تطبيق التلفزيون…", ps5: "أتصل بصورة الـPS5…" };
+const DEMO = [
+  ["We should leave before the storm gets here.", "يجب أن نغادر قبل وصول العاصفة."],
+  ["Keep your voice down and stay close.", "اخفض صوتك وابقَ قريباً."],
+  ["I never thought I'd see this place again.", "لم أظن أنني سأرى هذا المكان مرة أخرى."],
+  ["Hold the lantern higher, I can't see a thing.", "ارفع الفانوس عالياً، لا أستطيع رؤية شيء."],
+];
+let demoTimer, demoAt = 0, clockTimer;
+
+function playLine(en, ar, seconds) {
+  const subs = $(".subs");
+  $("#tv-en").textContent = en;
+  $("#tv-ar").textContent = ar;
+  subs.classList.remove("play", "hold");
+  if (!seconds) { subs.classList.add("hold"); return; }
+  void subs.offsetWidth;
+  subs.style.setProperty("--dur", `${seconds}s`);
+  subs.classList.add("play");
+}
+function clearSubs() {
+  $(".subs").classList.remove("play", "hold");
+}
+function demoLoop(on) {
+  clearInterval(demoTimer);
+  if (!on || S.still) return;
+  const tick = () => { const [en, ar] = DEMO[demoAt++ % DEMO.length]; playLine(en, ar, 2.6); };
+  tick();
+  demoTimer = setInterval(tick, 5200);
+}
+
+function renderClock() {
+  const at = S.live.started_at;
+  if (S.live.state !== "running" || !at) { $("#tv-clock").textContent = ""; return; }
+  const sec = Math.max(0, Math.floor(Date.now() / 1000 + S.skew - at));
+  const h = Math.floor(sec / 3600), m = Math.floor(sec / 60) % 60, s = sec % 60;
+  $("#tv-clock").textContent = `${h ? `${h}:` : ""}${String(m).padStart(h ? 2 : 1, "0")}:${String(s).padStart(2, "0")}`;
+}
+
+let lastState = null;
+function renderLive() {
+  const { state, step, error } = S.live;
+  $("#stage").dataset.state = state;
+  document.body.classList.toggle("running", state === "running");
+  $("#orb-title").textContent = { idle: "ابدأ الترجمة", starting: "لحظات…", running: "إيقاف الترجمة", stopping: "أوقّف…" }[state];
+  $("#orb-step").textContent = state === "starting" ? (STEP_TEXT[step] || "")
+    : state === "running" ? "تشتغل الحين على التلفزيون" : state === "stopping" ? "أمسح الشاشة" : "جاهز";
+  $("#orb").setAttribute("aria-label", state === "running" ? "إيقاف الترجمة" : "تشغيل الترجمة");
+  $("#tv-badge-t").textContent = { idle: "معاينة", starting: "يتصل", running: "مباشر", stopping: "يوقّف" }[state];
+  $("#home-title").textContent = state === "running" ? "الترجمة شغّالة" : state === "starting" ? "نجهّز كل شي…" : "جاهز متى ما أنت جاهز";
+  $("#home-sub").textContent = state === "running"
+    ? "العب عادي. أي سطر إنجليزي يطلع عربي مكانه."
+    : "اختر اللعبة واضغط «ابدأ». الباقي علينا.";
+  const alert = $("#alert");
+  alert.hidden = !error;
+  alert.textContent = error || "";
+  $("#game").disabled = $("#game2").disabled = state !== "idle";
+
+  const order = ["models", "tv", "ps5"];
+  const at = state === "starting" ? order.indexOf(step) : -1;
+  $$("#progress i").forEach((seg, i) => {
+    seg.classList.toggle("done", at > i);
+    seg.classList.toggle("now", at === i);
+  });
+  $("#second-state").textContent = state === "running" ? "مباشر" : "الترجمة واقفة";
+  if (S.app) {
+    // Android slows a hidden app to a crawl: keep the screen on for as long as the translation runs.
+    window.TarjimApp?.keepAwake?.(state !== "idle");
+    if (state === "idle" && !$("#rest-screen").hidden) rest(false);
+  }
+
+  if (state !== lastState) {
+    if (state === "idle") demoLoop(true);
+    else { demoLoop(false); if (lastState === "idle" || lastState === null) clearSubs(); }
+    clearInterval(clockTimer);
+    if (state === "running") clockTimer = setInterval(renderClock, 1000);
+    renderClock();
+    lastState = state;
+  }
+}
+
+function renderStats(st) {
+  const set = (id, v) => {
+    const n = $(id);
+    if (n.textContent !== String(v)) {
+      n.textContent = v;
+      n.classList.remove("bump");
+      void n.offsetWidth;
+      n.classList.add("bump");
+    }
+  };
+  set("#s-ms", st.latency_ms != null ? `${(st.latency_ms / 1000).toFixed(2)}s` : "—");
+  set("#s-lines", st.lines ?? 0);
+  set("#s-fps", st.fps ?? "—");
+  if (st.latency_ms != null) {
+    S.latencies.push(st.latency_ms);
+    if (S.latencies.length > 60) S.latencies.shift();
+    drawSpark();
+  }
+}
+function drawSpark() {
+  const v = S.latencies;
+  const line = $("#spark .line"), area = $("#spark .area");
+  if (v.length < 2) { line.setAttribute("d", ""); area.setAttribute("d", ""); return; }
+  const top = Math.max(400, ...v), W = 200, H = 48;
+  const pts = v.map((y, i) => [W - (i / (v.length - 1)) * W, H - 4 - (y / top) * (H - 8)]);
+  const d = pts.map((p, i) => `${i ? "L" : "M"}${p[0].toFixed(1)} ${p[1].toFixed(1)}`).join(" ");
+  line.setAttribute("d", d);
+  area.setAttribute("d", `${d} L${pts[pts.length - 1][0]} ${H} L${pts[0][0]} ${H} Z`);
+}
+
+const PEN = '<path d="M4 20h4l10.5-10.5a2.1 2.1 0 0 0-3-3L5 17z"/><path d="m14 8 3 3"/>';
+
+function feedItem(item) {
+  const li = el("li");
+  const ar = el("div", "ar", item.ar), en = el("div", "en", item.en);
+  const edit = el("button", "edit");
+  edit.title = "عدّل الترجمة";
+  edit.setAttribute("aria-label", "عدّل الترجمة");
+  edit.append(svg(PEN));
+  edit.addEventListener("click", () => editLine(li, item));
+  li.append(ar, edit, en);
+  return li;
+}
+function editLine(li, item) {
+  if (li.classList.contains("editing")) return;
+  li.classList.add("editing");
+  const input = el("input");
+  input.value = item.ar;
+  input.dir = "rtl";
+  input.maxLength = 300;
+  const ok = el("button", "mini", "احفظ"), no = el("button", "mini ghost", "إلغاء");
+  const close = () => li.replaceWith(Object.assign(feedItem(item), { className: item.fixed ? "fixed" : "" }));
+  const save = async () => {
+    const value = input.value.trim();
+    if (!value || value === item.ar) return close();
+    try {
+      await api("/api/line/fix", { en: item.en, ar: value, profile: S.live.profile || S.selected });
+      item.ar = value;
+      item.fixed = true;
+      toast("انحفظت. المرة الجاية تطلع بصياغتك ✓");
+    } catch (e) { toast(e.message); }
+    close();
+  };
+  ok.addEventListener("click", save);
+  no.addEventListener("click", close);
+  input.addEventListener("keydown", e => { if (e.key === "Enter") save(); if (e.key === "Escape") close(); });
+  li.replaceChildren(input, ok, no, el("div", "en", item.en));
+  input.focus();
+  input.select();
+}
+
+function addLine(item, animate = true) {
+  if (S.live.state !== "idle" || S.still) playLine(item.en, item.ar, animate ? 1.1 : 0);
+  $("#rest-line").textContent = item.ar;
+  const sar = $("#second-ar");
+  sar.textContent = item.ar;
+  $("#second-en").textContent = item.en;
+  if (animate) { sar.classList.remove("in"); void sar.offsetWidth; sar.classList.add("in"); }
+  const feed = $("#feed");
+  $(".empty", feed)?.remove();
+  feed.prepend(feedItem(item));
+  while (feed.children.length > 30) feed.lastChild.remove();
+  $("#feed-count").textContent = `${feed.children.length} سطر`;
+}
+
+$("#orb").addEventListener("click", async () => {
+  try {
+    if (S.live.state === "idle") {
+      S.live = { ...S.live, state: "starting", step: "models", error: "" };
+      renderLive();
+      await api("/api/start", { profile: $("#game").value });
+    } else if (S.live.state === "running" || S.live.state === "starting") {
+      await api("/api/stop", {});
+    }
+  } catch (e) {
+    S.live = { state: "idle", error: e.message };
+    renderLive();
+  }
+});
+
+function setNode(id, cls, text, extra) {
+  $(`#${id}`).className = cls;
+  $(`#${id}-t`).textContent = text;
+  $(`#${id}-s`).textContent = extra || "";
+}
+async function runCheck() {
+  if (!S.check) ["n-ps5", "n-pc", "n-tv"].forEach(id => setNode(id, "wait", "أفحص…"));
+  try { S.check = await api("/api/check"); } catch { return; }
+  const c = S.check;
+  const by = Object.fromEntries(c.items.map(i => [i.id, i]));
+  const ps5ok = by.ps5.ok && by.link.ok;
+  setNode("n-ps5", ps5ok ? "ok" : "bad",
+    ps5ok ? `${c.ps5_name || "متصل"} · شغّال` : (!by.link.ok ? by.link.hint : by.ps5.hint), c.ps5_host);
+  setNode("n-pc", !by.models.ok ? "bad" : by.power.ok ? "ok" : "warn",
+    !by.models.ok ? by.models.hint : by.power.ok ? "على الشاحن · يقرأ ويترجم" : "على البطارية: الترجمة أبطأ. شبّك الشاحن.");
+  setNode("n-tv", by.tv.ok ? "ok" : "bad", by.tv.ok ? `${c.tv_model || "متصل"} · جاهز` : by.tv.hint, c.tv_ip);
+  const chip = $("#power-chip");
+  chip.className = `rail-foot only-local ${by.power.ok ? "ok" : "bad"}`;
+  chip.title = by.power.ok ? "اللابتوب على الشاحن" : "اللابتوب على البطارية: الترجمة أبطأ";
+  if ($("#view-guide").classList.contains("on")) {
+    const typing = ["INPUT", "TEXTAREA"].includes(document.activeElement?.tagName);
+    if (!typing && !S.task?.running) renderGuide(); else renderSteps();
+  }
+}
+$("#recheck").addEventListener("click", () => { S.check = null; runCheck(); });
+
+/* --------------------------------- settings --------------------------------- */
+
+const FONTS = [
+  { id: "harmattan", name: "حرمتان", css: "Harmattan" },
+  { id: "harmattan-bold", name: "حرمتان عريض", css: "Harmattan Bold" },
+  { id: "noto-naskh", name: "نسخ", css: "Noto Naskh" },
+  { id: "noto-sans-arabic", name: "عصري", css: "Tarjim UI" },
+];
+
+function fillGames() {
+  for (const sel of [$("#game"), $("#game2")]) {
+    const cur = sel.value || S.selected;
+    sel.replaceChildren(...S.profiles.map(p => {
+      const o = el("option", "", p.title);
+      o.value = p.name;
+      return o;
+    }));
+    if (S.profiles.some(p => p.name === cur)) sel.value = cur;
+  }
+}
+function selectGame(name) {
+  S.selected = name;
+  $("#game").value = $("#game2").value = name;
+  if ($("#view-game").classList.contains("on")) loadProfile();
+}
+$("#game").addEventListener("change", e => selectGame(e.target.value));
+$("#game2").addEventListener("change", e => selectGame(e.target.value));
+
+let saveTimer, previewTimer, pending = {};
+function save(patch, quiet) {
+  Object.assign(S.profile, patch);
+  Object.assign(pending, patch);
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(async () => {
+    const send = pending;
+    pending = {};
+    try {
+      const fresh = await api("/api/profile", { name: S.profile.name, ...send });
+      S.profile.font_size = fresh.font_size;
+      if (!quiet) toast(S.live.state === "running" ? "تطبّق على التلفزيون ✓" : "انحفظ ✓");
+    } catch (e) { toast(e.message); }
+  }, 350);
+  refreshPreview();
+}
+function refreshPreview() {
+  clearTimeout(previewTimer);
+  previewTimer = setTimeout(() => {
+    const p = S.profile;
+    if (!p) return;
+    const o = {
+      font: p.font, font_size: p.font_auto ? null : p.font_size, background: p.background,
+      plate_opacity: p.plate_opacity, text_color: p.text_color, effect: p.effect, y_offset: p.y_offset,
+    };
+    const q = new URLSearchParams({ name: p.name, text: $("#preview-text").value, o: JSON.stringify(o), t: Date.now() });
+    const img = new Image();
+    $("#preview-load").classList.add("on");
+    img.onload = () => { $("#preview").src = img.src; $("#preview-load").classList.remove("on"); };
+    img.onerror = () => $("#preview-load").classList.remove("on");
+    img.src = withKey(`/api/preview?${q}`);
+  }, 180);
+}
+
+async function loadProfile() {
+  const name = $("#game2").value || S.selected || "default";
+  let p;
+  try { p = S.profile = await api(`/api/profile?name=${encodeURIComponent(name)}`); } catch (e) { return toast(e.message); }
+
+  $("#fonts").replaceChildren(...FONTS.map(f => {
+    const b = el("button", `font ${p.font === f.id ? "on" : ""}`);
+    const sample = el("b", "", "مرحباً بك");
+    sample.style.fontFamily = `"${f.css}"`;
+    b.append(sample, el("small", "", f.name));
+    b.addEventListener("click", () => {
+      $$(".font").forEach(x => x.classList.remove("on"));
+      b.classList.add("on");
+      save({ font: f.id });
+    });
+    return b;
+  }));
+
+  const size = $("#size"), auto = $("#size-auto");
+  auto.checked = p.font_auto;
+  size.value = p.font_size || 40;
+  size.disabled = p.font_auto;
+  const sizeLabel = () => $("#size-val").textContent = auto.checked
+    ? (p.font_size ? `الحجم ${p.font_size} (تلقائي)` : "الحجم تلقائي") : `الحجم ${size.value}`;
+  sizeLabel();
+  auto.onchange = () => {
+    size.disabled = auto.checked;
+    S.profile.font_auto = auto.checked;
+    save({ font_size: auto.checked ? null : Number(size.value) });
+    sizeLabel();
+  };
+  size.oninput = () => { S.profile.font_auto = false; S.profile.font_size = Number(size.value); sizeLabel(); refreshPreview(); };
+  size.onchange = () => save({ font_size: Number(size.value) });
+
+  renderLook();
+  renderRegion();
+  $("#typewriter").checked = p.settle_ms >= 200;
+  $("#typewriter").onchange = e => save({ settle_ms: e.target.checked ? 280 : 40 });
+  const read = $("#read");
+  read.value = p.read_scale;
+  const readLabel = () => $("#read-val").textContent = Number(read.value) === 1 ? "عادي" : `×${Number(read.value).toFixed(1)}`;
+  readLabel();
+  read.oninput = readLabel;
+  read.onchange = () => save({ read_scale: Number(read.value) });
+
+  renderNames();
+  refreshPreview();
+}
+$("#preview-text").addEventListener("input", refreshPreview);
+
+/* ---- look: presets, background, colour, effect, position ---- */
+
+const COLORS = [
+  { v: "auto", name: "تلقائي (لون ترجمة اللعبة)" },
+  { v: "#ffffff", name: "أبيض" }, { v: "#ffe14d", name: "أصفر" }, { v: "#7cf3ff", name: "سماوي" },
+  { v: "#c9ffb0", name: "أخضر فاتح" }, { v: "#ffb3d1", name: "وردي" }, { v: "#ffb36b", name: "برتقالي" },
+];
+const PRESETS = [
+  { name: "كلاسيك", hint: "مثل ترجمة اللعبة", set: { background: "cover", effect: "shadow", text_color: "auto", plate_opacity: 0.62 },
+    mini: "color:#f2f7f1;text-shadow:2px 2px 4px #000" },
+  { name: "سينما", hint: "خلفية داكنة", set: { background: "plate", effect: "none", text_color: "#ffffff", plate_opacity: 0.75 },
+    mini: "color:#fff;background:rgba(0,0,0,.72)" },
+  { name: "أصفر واضح", hint: "ينقرأ على أي مشهد", set: { background: "cover", effect: "outline", text_color: "#ffe14d", plate_opacity: 0.62 },
+    mini: "color:#ffe14d;-webkit-text-stroke:3px #000;paint-order:stroke fill" },
+  { name: "خفيف", hint: "فوق الإنجليزي", set: { background: "none", effect: "outline", text_color: "#ffffff", plate_opacity: 0.62 },
+    mini: "color:#fff;-webkit-text-stroke:3px #000;paint-order:stroke fill" },
+];
+const samePreset = (p, set) => Object.entries(set).every(([k, v]) => k === "plate_opacity" || p[k] === v);
+
+function renderLook() {
+  const p = S.profile;
+  $("#presets").replaceChildren(...PRESETS.map(pr => {
+    const b = el("button", `preset ${samePreset(p, pr.set) ? "on" : ""}`);
+    const mini = el("div", "mini");
+    const word = el("span", "", "مرحباً");
+    word.style.cssText = pr.mini;
+    mini.append(word);
+    b.append(mini, el("b", "", pr.name), el("small", "", pr.hint));
+    b.addEventListener("click", () => { save({ ...pr.set }); renderLook(); });
+    return b;
+  }));
+
+  $$("#bg button").forEach(b => {
+    b.classList.toggle("on", b.dataset.v === p.background);
+    b.onclick = () => { save({ background: b.dataset.v }); renderLook(); };
+  });
+  $("#plate-row").classList.toggle("off", p.background !== "plate");
+  const plate = $("#plate");
+  plate.value = p.plate_opacity;
+  plate.oninput = () => { S.profile.plate_opacity = Number(plate.value); refreshPreview(); };
+  plate.onchange = () => save({ plate_opacity: Number(plate.value) });
+
+  const known = COLORS.some(c => c.v === p.text_color);
+  const sw = COLORS.map(c => {
+    const b = el("button", `sw ${c.v === "auto" ? "auto" : ""} ${p.text_color === c.v ? "on" : ""}`);
+    if (c.v !== "auto") b.style.background = c.v;
+    b.title = c.name;
+    b.setAttribute("aria-label", c.name);
+    b.addEventListener("click", () => { save({ text_color: c.v }); renderLook(); });
+    return b;
+  });
+  const pick = el("label", `sw pick ${known ? "" : "on"}`);
+  pick.title = "لون ثاني";
+  const input = el("input");
+  input.type = "color";
+  input.value = known || p.text_color === "auto" ? "#ffffff" : p.text_color;
+  input.addEventListener("input", () => { S.profile.text_color = input.value; refreshPreview(); });
+  input.addEventListener("change", () => { save({ text_color: input.value }); renderLook(); });
+  pick.append(input);
+  $("#colors").replaceChildren(...sw, pick);
+  $("#color-val").textContent = p.text_color === "auto" ? "تلقائي من اللعبة" : (COLORS.find(c => c.v === p.text_color)?.name || p.text_color);
+
+  $$("#effect button").forEach(b => {
+    b.classList.toggle("on", b.dataset.v === p.effect);
+    b.onclick = () => { save({ effect: b.dataset.v }); renderLook(); };
+  });
+
+  const pos = $("#pos");
+  pos.value = p.y_offset;  // the slider runs right-to-left, so its right end (smallest value) is "higher"
+  const posLabel = () => {
+    const v = Number(pos.value);
+    $("#pos-val").textContent = v === 0 ? "مكان ترجمة اللعبة" : v < 0 ? `أعلى بـ${-v}` : `أسفل بـ${v}`;
+  };
+  posLabel();
+  pos.oninput = () => { S.profile.y_offset = Number(pos.value); posLabel(); refreshPreview(); };
+  pos.onchange = () => save({ y_offset: Number(pos.value) });
+}
+
+$("#try-tv").addEventListener("click", async e => {
+  const b = e.currentTarget;
+  b.disabled = true;
+  try {
+    await api("/api/tv/try", { name: S.profile.name, text: $("#preview-text").value });
+    toast("شوف التلفزيون: السطر يطلع 8 ثواني");
+    setTimeout(() => { b.disabled = false; }, 9000);
+  } catch (err) { toast(err.message); b.disabled = false; }
+});
+
+/* ---- region: where on the screen subtitles are read ---- */
+
+function renderRegion() {
+  const stage = $("#region-stage"), box = $("#region-box");
+  let r = { ...S.profile.region };
+  const place = () => {
+    box.style.left = `${r.left * 100}%`;
+    box.style.top = `${r.top * 100}%`;
+    box.style.width = `${(r.right - r.left) * 100}%`;
+    box.style.height = `${(r.bottom - r.top) * 100}%`;
+  };
+  place();
+  const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+  const MIN_W = 0.12, MIN_H = 0.08;
+
+  box.onpointerdown = ev => {
+    ev.preventDefault();
+    const handle = ev.target.dataset?.h || "move";
+    const rect = stage.getBoundingClientRect();
+    const start = { x: ev.clientX, y: ev.clientY, ...r };
+    box.classList.add("drag");
+    box.setPointerCapture(ev.pointerId);
+    box.onpointermove = mv => {
+      const dx = (mv.clientX - start.x) / rect.width, dy = (mv.clientY - start.y) / rect.height;
+      if (handle === "move") {
+        const w = start.right - start.left, h = start.bottom - start.top;
+        r.left = clamp(start.left + dx, 0, 1 - w); r.right = r.left + w;
+        r.top = clamp(start.top + dy, 0, 1 - h); r.bottom = r.top + h;
+      } else {
+        if (handle.includes("w")) r.left = clamp(start.left + dx, 0, start.right - MIN_W);
+        if (handle.includes("e")) r.right = clamp(start.right + dx, start.left + MIN_W, 1);
+        if (handle.includes("n")) r.top = clamp(start.top + dy, 0, start.bottom - MIN_H);
+        if (handle.includes("s")) r.bottom = clamp(start.bottom + dy, start.top + MIN_H, 1);
+      }
+      place();
+    };
+    box.onpointerup = box.onpointercancel = () => {
+      box.classList.remove("drag");
+      box.onpointermove = box.onpointerup = box.onpointercancel = null;
+      const round = v => Math.round(v * 1000) / 1000;
+      r = { left: round(r.left), top: round(r.top), right: round(r.right), bottom: round(r.bottom) };
+      save({ region: r });
+    };
+  };
+  $("#region-reset").onclick = () => {
+    r = { left: 0.08, top: 0.7, right: 0.92, bottom: 1 };
+    place();
+    save({ region: null });
+    S.profile.region = r;
+  };
+  const shot = () => {
+    const img = new Image();
+    img.onload = () => { $("#region-img").src = img.src; $("#region-hint").hidden = true; };
+    img.onerror = () => { $("#region-img").removeAttribute("src"); $("#region-hint").hidden = false; };
+    img.src = withKey(`/api/frame?t=${Date.now()}`);
+  };
+  $("#region-shot").onclick = shot;
+  shot();
+}
+
+/* ---- names ---- */
+
+function renderNames() {
+  const box = $("#names");
+  const collect = () => save({
+    glossary: $$(".name", box).map(r => ({ en: $(".en", r).value, ar: $(".ar", r).value, f: $(".fem", r).classList.contains("on") })),
+  }, true);
+  box.replaceChildren(...S.profile.glossary.map(row => nameRow(row, collect)));
+  $("#add-name").onclick = () => {
+    const r = nameRow({ en: "", ar: "", f: false }, collect);
+    box.prepend(r);
+    $(".en", r).focus();
+  };
+}
+function nameRow(row, collect) {
+  const r = el("div", "name");
+  const en = el("input", "en"), ar = el("input", "ar");
+  const fem = el("button", `fem ${row.f ? "on" : ""}`, "♀"), del = el("button", "del", "×");
+  en.value = row.en; en.placeholder = "Name"; en.maxLength = 60; en.setAttribute("aria-label", "الاسم بالإنجليزي");
+  ar.value = row.ar; ar.placeholder = "الاسم بالعربي"; ar.maxLength = 60; ar.setAttribute("aria-label", "الاسم بالعربي");
+  fem.title = "اسم امرأة (الأفعال تطلع مؤنثة)";
+  fem.setAttribute("aria-pressed", String(!!row.f));
+  del.title = "حذف";
+  en.addEventListener("change", collect);
+  ar.addEventListener("change", collect);
+  fem.addEventListener("click", () => {
+    fem.setAttribute("aria-pressed", String(fem.classList.toggle("on")));
+    collect();
+  });
+  del.addEventListener("click", () => {
+    r.classList.add("out");
+    setTimeout(() => { r.remove(); collect(); }, 220);
+  });
+  r.append(en, el("span", "arrow", "←"), ar, fem, del);
+  return r;
+}
+
+$("#new-game").addEventListener("click", () => { $("#new-title").value = ""; $("#dlg-new").showModal(); });
+$("#dlg-new").addEventListener("close", async () => {
+  const title = $("#new-title").value.trim();
+  if ($("#dlg-new").returnValue !== "ok" || !title) return;
+  try {
+    const p = await api("/api/profile/new", { title });
+    S.profiles.push({ name: p.name, title: p.title });
+    fillGames();
+    selectGame(p.name);
+    toast("انضافت اللعبة ✓");
+  } catch (e) { toast(e.message); }
+});
+
+/* ---------------------------------- phone ---------------------------------- */
+
+async function loadPhone() {
+  let v;
+  try { v = await api("/api/phone"); } catch (e) { return toast(e.message); }
+  $("#phone-on").checked = v.enabled;
+  $("#phone-body").hidden = !v.enabled;
+  if (v.enabled) {
+    const qr = $("#phone-qr");
+    if (v.pair_url) {
+      const img = el("img");
+      img.alt = "رمز QR لربط الجوال";
+      img.src = `/api/phone/qr.svg?t=${Date.now()}`;
+      qr.replaceChildren(img);
+    } else {
+      qr.replaceChildren(el("span", "muted", "اللابتوب مو على شبكة"));
+    }
+    $("#phone-url").textContent = v.url ? v.url.replace("http://", "") : "اللابتوب مو متصل بالشبكة";
+    $("#phone-pin").textContent = v.pin;
+  }
+  const list = $("#phone-devices");
+  if (!v.devices.length) return list.replaceChildren(el("p", "muted", "ما فيه جوال مربوط."));
+  list.replaceChildren(...v.devices.map(d => {
+    const row = el("div", "device");
+    const info = el("div");
+    info.append(el("b", "", d.name), el("span", "muted", `انربط ${new Date(d.added * 1000).toLocaleDateString("ar-SA-u-nu-latn")}`));
+    const rm = el("button", "btn soft", "افصل");
+    rm.addEventListener("click", async () => {
+      if (!await ask("تفصل هذا الجوال؟", `«${d.name}» ما راح يقدر يتحكم بترجِم إلا بعد ما ينربط من جديد.`, "افصله")) return;
+      await api("/api/phone/forget", { id: d.id }).catch(e => toast(e.message));
+      loadPhone();
+    });
+    row.append(info, rm);
+    return row;
+  }));
+}
+$("#phone-on").addEventListener("change", async e => {
+  try { await api("/api/phone", { enabled: e.target.checked }); } catch (err) { toast(err.message); }
+  loadPhone();
+});
+
+/* ------------------------------ inside the phone app ------------------------------ */
+
+function rest(on) {
+  $("#rest-screen").hidden = !on;
+  window.TarjimApp?.dim?.(on);
+}
+let restTap = 0;
+$("#rest").addEventListener("click", () => {
+  if (S.live.state === "idle") return toast("شغّل الترجمة أول");
+  $("#rest-line").textContent = "";
+  rest(true);
+});
+$("#rest-screen").addEventListener("click", () => {
+  const now = Date.now();
+  if (now - restTap < 450) rest(false);
+  restTap = now;
+});
+window.onAppBack = () => {
+  if (!$("#rest-screen").hidden) { rest(false); return true; }
+  if (!$("#view-home").classList.contains("on")) { go("home"); return true; }
+  return false;
+};
+window.onAppResume = () => {
+  if ($("#view-setup").classList.contains("on")) loadSetup();
+  S.check = null;
+  runCheck();
+};
+
+async function loadSetup() {
+  let v;
+  try { v = await api("/api/setup"); } catch (e) { return toast(e.message); }
+  const tv = $("#su-tv"), ps5 = $("#su-ps5");
+  if (document.activeElement !== tv) tv.value = v.tv;
+  if (document.activeElement !== ps5) ps5.value = v.console;
+  const linked = $("#su-linked");
+  linked.className = `linked ${v.consoles.length ? "" : "none"}`;
+  linked.textContent = v.consoles.length ? `الجوال مربوط بـ${v.consoles.join("، ")} ✓` : "الجوال مو مربوط بالـPS5 للحين.";
+  $("#su-link").textContent = v.consoles.length ? "اربط من جديد" : "اربط الـPS5";
+  $("#su-link").className = v.consoles.length ? "btn soft" : "btn";
+  const free = !!window.TarjimApp?.batteryExempt?.();
+  $("#su-batt-state").textContent = free ? "مسموح ✓" : "";
+  $("#su-batt").hidden = free;
+}
+const ADDRESS = /^\d{1,3}(\.\d{1,3}){3}$/;
+for (const [id, key] of [["#su-tv", "tv"], ["#su-ps5", "console"]]) {
+  $(id).addEventListener("change", async e => {
+    const value = e.target.value.trim();
+    if (value && !ADDRESS.test(value)) return toast("العنوان يكون بهذا الشكل: 192.168.1.50");
+    try { await api("/api/setup", { [key]: value }); toast("انحفظ ✓"); S.check = null; runCheck(); } catch (err) { toast(err.message); }
+  });
+}
+$("#su-link").addEventListener("click", () => {
+  const host = $("#su-ps5").value.trim();
+  if (!ADDRESS.test(host)) return toast("اكتب عنوان الـPS5 أول");
+  window.TarjimApp?.register?.(host);
+});
+$("#su-batt").addEventListener("click", () => window.TarjimApp?.askBattery?.());
+
+/* ---------------------------------- guide ---------------------------------- */
+
+const GUIDE = [
+  { title: "كيف يشتغل", done: () => true },
+  { title: "التلفزيون", done: c => !!c?.tv_ip },
+  { title: "الـPS5", done: c => !!c?.ps5_user },
+  { title: "ابدأ", done: () => false },
+];
+
+function renderSteps() {
+  $("#steps").replaceChildren(...GUIDE.map((g, i) => {
+    const b = el("button", `stepdot ${i === S.guideStep ? "on" : ""} ${g.done(S.check) && i !== S.guideStep ? "done" : ""}`);
+    b.append(el("span", "n", g.done(S.check) && i !== 0 && i !== S.guideStep ? "✓" : String(i + 1)), el("b", "", g.title));
+    b.addEventListener("click", () => { S.guideStep = i; renderGuide(); });
+    return b;
+  }));
+  $("#g-pos").textContent = `${S.guideStep + 1} من ${GUIDE.length}`;
+  $("#g-prev").disabled = S.guideStep === 0;
+  $("#g-next").textContent = S.guideStep === GUIDE.length - 1 ? "للرئيسية" : "التالي";
+}
+$("#g-prev").addEventListener("click", () => { S.guideStep = Math.max(0, S.guideStep - 1); renderGuide(); });
+$("#g-next").addEventListener("click", () => {
+  if (S.guideStep === GUIDE.length - 1) return go("home");
+  S.guideStep += 1;
+  renderGuide();
+});
+
+function html(strings, ...values) {
+  const t = document.createElement("template");
+  t.innerHTML = String.raw(strings, ...values);
+  const wrap = el("div");
+  wrap.append(t.content);
+  return wrap;
+}
+function logBox(id) {
+  const box = el("div", "log");
+  box.id = id;
+  return box;
+}
+function pushLog(box, item) {
+  if (!box) return;
+  box.append(el("div", item.kind, item.msg));
+  box.scrollTop = box.scrollHeight;
+}
+
+function renderGuide() {
+  renderSteps();
+  const body = $("#guide-body");
+  const c = S.check || {};
+  let view;
+
+  if (S.guideStep === 0) {
+    view = html`
+      <h2>ترجِم في ثلاث خطوات</h2>
+      <p class="lead">الـPS5 يبقى موصّل بالتلفزيون مثل ما هو، ولعبتك ويدك ما يتغيّر فيهم شي. ترجِم يشتغل جنبهم.</p>
+      <div class="how">
+        <div><span class="num">1</span><b>اللابتوب يشوف الصورة</b><p>ياخذ نسخة من صورة الـPS5 عن طريق الشبكة، بحساب ثاني عشان يدك تبقى شغّالة.</p></div>
+        <div><span class="num">2</span><b>يقرأ ويترجم</b><p>يلقط السطر الإنجليزي أول ما يطلع، ويترجمه على اللابتوب نفسه بدون إنترنت.</p></div>
+        <div><span class="num">3</span><b>التلفزيون يرسم العربي</b><p>تطبيق صغير على التلفزيون يحط العربي فوق مكان الإنجليزي. كل هذا في أقل من ربع ثانية.</p></div>
+      </div>`;
+  }
+
+  if (S.guideStep === 1) {
+    view = html`
+      <h2>جهّز التلفزيون</h2>
+      <p class="lead">مرة وحدة بس. نثبّت تطبيق صغير على التلفزيون يرسم الترجمة، وتقدر تشيله بأي وقت.</p>
+      <ol class="todo">
+        <li><div>فعّل خيارات المطوّر: <span class="path">الإعدادات ‹ النظام ‹ حول ‹ رقم الإصدار</span> واضغط عليه 7 مرات.</div></li>
+        <li><div>فعّل التصحيح: <span class="path">الإعدادات ‹ النظام ‹ خيارات المطوّر ‹ تصحيح أخطاء USB</span></div></li>
+        <li><div>شوف عنوان التلفزيون: <span class="path">الإعدادات ‹ الشبكة والإنترنت ‹ اسم شبكتك ‹ عنوان IP</span> واكتبه هنا:</div></li>
+      </ol>
+      <div class="action">
+        <input class="text" id="tv-ip" placeholder="192.168.1.50" inputmode="decimal" maxlength="15" aria-label="عنوان التلفزيون">
+        <button class="btn" id="tv-setup">جهّز التلفزيون</button>
+        <button class="btn soft" id="tv-test">اعرض مربعات الاختبار</button>
+      </div>
+      <div class="note">أول مرة بتطلع رسالة على التلفزيون: «السماح بتصحيح الأخطاء؟» اختر <b>السماح دائماً</b> ثم موافق.</div>
+      <div id="tv-result"></div>`;
+    view.append(logBox("tv-log"));
+    $("#tv-ip", view).value = c.tv_ip || "";
+    if (c.tv_ip) $("#tv-result", view).append(el("div", "note good", `التلفزيون مجهّز${c.tv_model ? ` (${c.tv_model})` : ""}. لو تحدّث ترجِم أو تغيّر عنوان التلفزيون، اضغط «جهّز التلفزيون» مرة ثانية.`));
+    $("#tv-setup", view).addEventListener("click", async () => {
+      $("#tv-log").replaceChildren();
+      $("#tv-result").replaceChildren();
+      try { await api("/api/tv/setup", { ip: $("#tv-ip").value }); setBusy(true); }
+      catch (err) { $("#tv-result").append(el("div", "note bad", err.message)); }
+    });
+    $("#tv-test", view).addEventListener("click", async () => {
+      $("#tv-log").replaceChildren();
+      const r = $("#tv-result");
+      r.replaceChildren();
+      try {
+        await api("/api/tv/test", {});
+        setBusy(true);
+        r.append(html`<div class="note">شوف التلفزيون الحين (25 ثانية): المفروض يطلع مربعين فوق اللعبة.</div>
+          <div class="ab"><i class="a">A</i><i class="b">B</i></div>`);
+      } catch (err) { r.append(el("div", "note bad", err.message)); }
+    });
+  }
+
+  if (S.guideStep === 2) {
+    view = html`
+      <h2>اربط الـPS5</h2>
+      <p class="lead">اللابتوب يحتاج حساب PSN <b>ثاني</b> عشان ياخذ نسخة الصورة. لو استخدمت نفس الحساب اللي تلعب فيه، يدك بتفصل.</p>
+      <ol class="todo">
+        <li><div>على الـPS5 أضف مستخدم بحساب PSN ثاني (مجاني)، ثم فعّل: <span class="path">الإعدادات ‹ النظام ‹ اللعب عن بُعد ‹ تمكين اللعب عن بُعد</span></div></li>
+        <li><div>خلّ الـPS5 شغّال، ثم:
+          <div class="action"><button class="btn" id="p-find">دوّر على الـPS5</button><span class="muted" id="p-found"></span></div></div></li>
+        <li><div>سجّل دخول <b>بالحساب الثاني</b> في صفحة Sony. بعد الدخول تطلع صفحة فاضية فيها كلمة redirect: انسخ عنوانها من فوق والصقه هنا.
+          <div class="action"><button class="btn soft" id="p-login">افتح صفحة الدخول</button>
+          <input class="text wide" id="p-url" placeholder="https://remoteplay.dl.playstation.net/remoteplay/redirect?code=…" aria-label="عنوان صفحة redirect">
+          <button class="btn" id="p-url-go">تم</button></div></div></li>
+        <li><div>على الـPS5 وأنت داخل بالحساب الثاني: <span class="path">الإعدادات ‹ النظام ‹ اللعب عن بُعد ‹ ربط جهاز</span> واكتب الرقم:
+          <div class="action"><input class="text" id="p-pin" placeholder="8 أرقام" inputmode="numeric" maxlength="9" aria-label="رقم الربط">
+          <button class="btn" id="p-pin-go">اربط</button></div></div></li>
+      </ol>
+      <div id="p-result"></div>`;
+    const result = $("#p-result", view);
+    const say = (cls, msg) => result.replaceChildren(el("div", `note ${cls}`, msg));
+    if (c.ps5_user) say("good", `اللابتوب مربوط بالحساب «${c.ps5_user}»${c.ps5_name ? ` على ${c.ps5_name}` : ""}. ما تحتاج تعيد الخطوات.`);
+    const busy = async (btn, fn) => {
+      btn.disabled = true;
+      try { await fn(); } catch (err) { say("bad", err.message); } finally { btn.disabled = false; }
+    };
+    $("#p-find", view).addEventListener("click", e => busy(e.currentTarget, async () => {
+      $("#p-found").textContent = "أدوّر…";
+      const r = await api("/api/ps5/discover", {});
+      $("#p-found").textContent = r.found ? `لقيته: ${r.name} (${r.on ? "شغّال" : "في وضع الراحة"})` : "ما لقيته. تأكد إنه شغّال وعلى نفس الشبكة.";
+      if (r.found && r.linked.length) say("good", `مربوط من قبل بالحساب «${r.linked[0]}».`);
+      S.check = null; runCheck();
+    }));
+    $("#p-login", view).addEventListener("click", e => busy(e.currentTarget, () => api("/api/ps5/open-login", {})));
+    $("#p-url-go", view).addEventListener("click", e => busy(e.currentTarget, async () => {
+      const r = await api("/api/ps5/redirect", { url: $("#p-url").value });
+      say("good", `تمام، الحساب: «${r.user}». باقي رقم الربط من الـPS5.`);
+    }));
+    $("#p-pin-go", view).addEventListener("click", e => busy(e.currentTarget, async () => {
+      const r = await api("/api/ps5/pin", { pin: $("#p-pin").value });
+      say("good", `تم الربط بالحساب «${r.user}» ✓`);
+      S.check = null; runCheck();
+    }));
+  }
+
+  if (S.guideStep === 3) {
+    const ready = c.setup_done;
+    view = html`
+      <h2>${ready ? "كل شي جاهز" : "باقي شوي"}</h2>
+      <p class="lead">${ready ? "من اليوم ورايح: افتح ترجِم، اختر اللعبة، واضغط «ابدأ»." : "كمّل خطوة التلفزيون وخطوة الـPS5، ثم ارجع هنا."}</p>
+      <div class="tips">
+        <div><b>شبّك الشاحن</b><p>على البطارية ويندوز يبطّئ المعالج والترجمة تتأخر.</p></div>
+        <div><b>العب بحسابك العادي</b><p>الحساب الثاني للنسخة بس. لا تدخل اللعبة فيه.</p></div>
+        <div><b>أضف أسماء الشخصيات</b><p>من «المظهر» ‹ قاموس الأسماء، عشان تنكتب صح دايماً.</p></div>
+        <div><b>ترجمة ما عجبتك؟</b><p>في الرئيسية اضغط القلم جنب السطر واكتبها بطريقتك. تنحفظ للمرة الجاية.</p></div>
+        <div><b>الترجمة تطلع قبل اكتمال السطر؟</b><p>فعّل «اللعبة تكتب النص حرف حرف» في المظهر ‹ التوقيت.</p></div>
+        <div><b>تبي تشيل ترجِم من التلفزيون؟</b><p>يحذف التطبيق ويرجّع إعدادات التلفزيون مثل ما كانت.</p>
+          <button class="textbtn" id="tv-revert">شيله من التلفزيون</button></div>
+      </div>
+      <button class="btn" data-goto="home">${ready ? "يلا نبدأ" : "للرئيسية"}</button>`;
+    view.append(logBox("rv-log"));
+    $("#tv-revert", view).addEventListener("click", async () => {
+      if (!await ask("تشيل ترجِم من التلفزيون؟", "ينحذف التطبيق من التلفزيون وترجع إعداداته مثل ما كانت. تقدر تجهّزه من جديد من الدليل.", "شيله")) return;
+      $("#rv-log").replaceChildren();
+      try { await api("/api/tv/revert", {}); } catch (err) { toast(err.message); }
+    });
+    api("/api/guide-seen", {}).catch(() => {});
+  }
+
+  body.replaceChildren(view);
+  if (S.task?.running) setBusy(true);
+}
+
+function setBusy(on) {
+  $$("#tv-setup, #tv-test, #tv-revert").forEach(b => b.disabled = on);
+}
+
+/* ------------------------------ live connection ------------------------------ */
+
+function connect() {
+  const es = new EventSource(withKey("/api/events"));
+  es.addEventListener("state", e => {
+    const was = S.live.state;
+    S.live = { ...S.live, ...JSON.parse(e.data) };
+    renderLive();
+    if (was !== "idle" && S.live.state === "idle") runCheck();
+    if (was === "starting" && S.live.state === "running") { S.latencies = []; drawSpark(); toast("الترجمة شغّالة ✓"); }
+  });
+  es.addEventListener("line", e => addLine(JSON.parse(e.data)));
+  es.addEventListener("stats", e => renderStats(JSON.parse(e.data)));
+  es.addEventListener("phone", () => { if ($("#view-phone").classList.contains("on")) loadPhone(); toast("انربط جوال جديد ✓"); });
+  es.addEventListener("ask-close", async () => {
+    if ($("#dlg-ask").open) return;
+    if (await ask("الترجمة شغّالة", "تبي توقّفها وتقفل البرنامج؟", "وقّف واقفل")) api("/api/quit", {}).catch(() => {});
+  });
+  es.addEventListener("task", e => {
+    const d = JSON.parse(e.data);
+    S.task = d;
+    if (d.item) pushLog(d.name === "tv-revert" ? $("#rv-log") : $("#tv-log"), d.item);
+    if (!d.running) {
+      setBusy(false);
+      if (d.name === "tv-setup") {
+        const r = $("#tv-result");
+        if (r) r.replaceChildren(el("div", `note ${d.ok ? "good" : "bad"}`, d.ok ? "التلفزيون جاهز ✓ جرّب مربعات الاختبار." : "ما اكتمل التجهيز. شوف الرسائل تحت."));
+      }
+      if (d.name === "tv-setup" || d.name === "tv-revert") { S.check = null; runCheck(); }
+    }
+  });
+  es.onerror = () => { /* the browser reconnects by itself */ };
+}
+
+/* ---------------------------------- pairing ---------------------------------- */
+
+let pairingShown = false;
+function needPairing() {
+  if (pairingShown) return;
+  pairingShown = true;
+  TOKEN = null;
+  store.set("tarjim-token", null);
+  $("#pair").hidden = false;
+  $("#pair-pin").focus();
+}
+function deviceName() {
+  const m = navigator.userAgent.match(/Android [\d.]+; ([^;)]+?)(?: Build|\))/);
+  return m ? m[1].trim() : /iPhone|iPad/.test(navigator.userAgent) ? "iPhone" : "جوال";
+}
+async function pairWith(pin) {
+  const res = await fetch("/api/pair", {
+    method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ pin, name: deviceName() }),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok || !data.token) throw new Error(data.error || "ما قدرت أربط. تأكد إن «التحكم من الجوال» مفعّل على اللابتوب.");
+  TOKEN = data.token;
+  store.set("tarjim-token", TOKEN);
+}
+$("#pair-go").addEventListener("click", async () => {
+  const err = $("#pair-err");
+  err.hidden = true;
+  try {
+    await pairWith($("#pair-pin").value.trim());
+    location.replace(location.pathname);
+  } catch (e) { err.textContent = e.message; err.hidden = false; }
+});
+$("#pair-pin").addEventListener("keydown", e => { if (e.key === "Enter") $("#pair-go").click(); });
+
+/* ----------------------------------- boot ----------------------------------- */
+
+async function boot() {
+  const q = new URLSearchParams(location.search);
+  if (q.get("k")) { TOKEN = q.get("k"); store.set("tarjim-token", TOKEN); }
+  const helloRes = await fetch(withKey("/api/hello"));
+  const hello = await helloRes.json();
+  S.remote = !!hello.remote;
+  S.app = hello.app === "phone";
+  document.body.classList.toggle("remote", S.remote);
+  document.body.classList.toggle("phoneapp", S.app);
+  if (S.app) {
+    // The phone covers the English with a plate; it cannot repaint the scene under the letters.
+    for (const preset of PRESETS) if (preset.set.background === "cover") preset.set.background = "plate";
+    $("#try-tv").title = "يشتغل والترجمة شغّالة";
+  }
+  if (S.remote && !hello.paired) {
+    if (q.get("pair")) {
+      try { await pairWith(q.get("pair")); return location.replace(location.pathname); } catch { /* fall through to the code screen */ }
+    }
+    document.body.classList.remove("booting");
+    return needPairing();
+  }
+  if (q.get("k") || q.get("pair")) history.replaceState(null, "", location.pathname);
+  if (S.remote && hello.apk && /Android/.test(navigator.userAgent) && !/TarjimApp/.test(navigator.userAgent)) {
+    $("#apk-banner").hidden = false;
+  }
+
+  const st = await api("/api/state");
+  S.skew = st.now - Date.now() / 1000;
+  S.profiles = st.profiles;
+  S.live = st.live;
+  S.task = st.task;
+  S.still = q.has("still");
+  document.body.classList.toggle("still", S.still);
+  S.selected = st.live.profile || st.last_profile || (st.profiles.find(p => p.name !== "default") || st.profiles[0])?.name;
+  fillGames();
+  selectGame(S.selected);
+  renderLive();
+  renderStats(st.live.stats || {});
+  [...(st.live.lines || [])].forEach(l => addLine(l, false));
+  requestAnimationFrame(() => document.body.classList.remove("booting"));
+
+  // ?still&view=game&step=2&demo : a frozen page for screenshots (no live connection, no timers).
+  if (S.still) {
+    await runCheck();
+    if (q.get("step")) S.guideStep = Number(q.get("step"));
+    if (q.get("view")) go(q.get("view"));
+    if (q.has("demo")) {
+      S.live = { state: "running", step: "", error: "", started_at: Date.now() / 1000 + S.skew - 754 };
+      renderLive();
+      [162, 148, 171, 139, 150, 190, 144, 152, 136, 158, 149, 141, 165, 150].forEach(v => renderStats({ latency_ms: v, lines: 3, fps: 30 }));
+      addLine({ en: "We should leave before the storm gets here.", ar: "يجب أن نغادر قبل وصول العاصفة." }, false);
+      addLine({ en: "Keep your voice down and stay close.", ar: "اخفض صوتك وابقَ قريباً." }, false);
+      addLine({ en: "Hold the lantern higher, I can't see a thing.", ar: "ارفع الفانوس عالياً، لا أستطيع رؤية شيء." }, false);
+    } else {
+      playLine(...DEMO[0], 0);
+    }
+    return;
+  }
+  connect();
+  if (S.app && !st.setup_done) go("setup");
+  if (!S.app && !S.remote && !st.guide_seen && !st.setup_done) go("guide");
+  runCheck();
+  setInterval(() => { if (S.live.state === "idle" && document.visibilityState === "visible") runCheck(); }, 20000);
+}
+boot().catch(e => {
+  document.body.classList.remove("booting");
+  $("#alert").hidden = false;
+  $("#alert").textContent = e.message;
+});

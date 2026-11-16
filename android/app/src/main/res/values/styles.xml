@@ -110,4 +110,9 @@
         <item name="materialAlertDialogTheme">@style/AppTheme.AlertDialog</item>
         <item name="android:windowBackground">@color/stream_background</item>
     </style>
+    <style name="TarjimTheme" parent="@android:style/Theme.DeviceDefault.NoActionBar">
+        <item name="android:windowBackground">@color/tarjim_ink</item>
+        <item name="android:windowLightStatusBar">false</item>
+    </style>
+    <color name="tarjim_ink">#0A0B0F</color>
 </resources>

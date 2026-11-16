@@ -10,23 +10,20 @@ import android.content.Intent
 import android.content.pm.ServiceInfo
 import android.net.wifi.WifiManager
 import android.os.Build
-import android.os.Handler
 import android.os.IBinder
-import android.os.Looper
 import android.os.PowerManager
 import com.metallic.chiaki.R
 import com.metallic.chiaki.lib.ConnectInfo
+import java.util.concurrent.CopyOnWriteArrayList
 
 /**
- * Keeps the translation running while the phone's screen is off or another app is open.
- * One engine at a time; the screen ([TarjimActivity]) only watches [status].
+ * Keeps the translation running while another app is open. One engine at a time.
+ * The interface (served by [PhoneServer]) reads the state from the companion object.
  */
 class TarjimService : Service()
 {
-	private var engine: TarjimEngine? = null
 	private var wakeLock: PowerManager.WakeLock? = null
 	private var wifiLock: WifiManager.WifiLock? = null
-	private val main = Handler(Looper.getMainLooper())
 
 	override fun onBind(intent: Intent?): IBinder? = null
 
@@ -40,6 +37,7 @@ class TarjimService : Service()
 		@Suppress("DEPRECATION")
 		val info = intent?.getParcelableExtra<ConnectInfo>(EXTRA_CONNECT_INFO)
 		val tv = intent?.getStringExtra(EXTRA_TV)
+		val game = intent?.getStringExtra(EXTRA_PROFILE) ?: "default"
 		if(info == null || tv.isNullOrBlank())
 		{
 			stopSelf()
@@ -62,16 +60,25 @@ class TarjimService : Service()
 		if(engine == null)
 		{
 			val power = getSystemService(Context.POWER_SERVICE) as PowerManager
-			wakeLock = power.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "tarjim:engine").apply { acquire(6 * 60 * 60 * 1000L) }
+			wakeLock = power.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "tarjim:engine").apply { acquire(8 * 60 * 60 * 1000L) }
 			val wifi = applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager
 			@Suppress("DEPRECATION")
 			wifiLock = wifi.createWifiLock(WifiManager.WIFI_MODE_FULL_HIGH_PERF, "tarjim:wifi").apply { acquire() }
-			val e = TarjimEngine(applicationContext, info, tv)
-			e.onStatus = { s -> main.post { status = s; listener?.invoke(s) } }
+			val e = TarjimEngine(applicationContext, info, tv, Store(applicationContext), game)
+			e.onStatus = { s -> status = s; for(l in listeners) l("status") }
+			e.onLine = { line ->
+				synchronized(lines) { lines.add(line); while(lines.size > 60) lines.removeAt(0) }
+				lastLine = line
+				for(l in listeners) l("line")
+			}
+			synchronized(lines) { lines.clear() }
+			status = TarjimEngine.Status()
+			profile = game
+			startedAt = 0L
 			engine = e
 			running = true
-			status = TarjimEngine.Status()
 			e.start()
+			for(l in listeners) l("status")
 		}
 		return START_NOT_STICKY
 	}
@@ -79,12 +86,14 @@ class TarjimService : Service()
 	override fun onDestroy()
 	{
 		engine?.onStatus = null
+		engine?.onLine = null
 		engine?.stop()
 		engine = null
 		running = false
+		startedAt = 0L
 		try { wakeLock?.release() } catch(e: Exception) { }
 		try { wifiLock?.release() } catch(e: Exception) { }
-		main.post { listener?.invoke(status) }
+		for(l in listeners) l("status")
 		super.onDestroy()
 	}
 
@@ -92,12 +101,26 @@ class TarjimService : Service()
 	{
 		const val EXTRA_CONNECT_INFO = "connect_info"
 		const val EXTRA_TV = "tv"
+		const val EXTRA_PROFILE = "profile"
 		const val ACTION_STOP = "dev.tarjim.mobile.STOP"
 		private const val CHANNEL = "tarjim"
 
+		@Volatile var engine: TarjimEngine? = null
 		@Volatile var running = false
 		@Volatile var status = TarjimEngine.Status()
-		/** Called on the main thread whenever [status] or [running] changes. */
-		var listener: ((TarjimEngine.Status) -> Unit)? = null
+		@Volatile var profile = "default"
+		@Volatile var startedAt = 0L  // wall-clock seconds when the picture first arrived
+		@Volatile var lastLine: TarjimEngine.Line? = null
+		val lines = ArrayList<TarjimEngine.Line>()
+		/** Called (from any thread) with "status" or "line" when something changed. */
+		val listeners = CopyOnWriteArrayList<(String) -> Unit>()
+
+		fun start(context: Context, info: ConnectInfo, tv: String, profile: String)
+		{
+			val intent = Intent(context, TarjimService::class.java).putExtra(EXTRA_CONNECT_INFO, info).putExtra(EXTRA_TV, tv).putExtra(EXTRA_PROFILE, profile)
+			if(Build.VERSION.SDK_INT >= 26) context.startForegroundService(intent) else context.startService(intent)
+		}
+
+		fun stop(context: Context) = context.stopService(Intent(context, TarjimService::class.java))
 	}
 }

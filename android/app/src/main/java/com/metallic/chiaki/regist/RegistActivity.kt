@@ -47,7 +47,7 @@ class RegistActivity: AppCompatActivity(), RevealActivity
 		viewModel = ViewModelProvider(this).get(RegistViewModel::class.java)
 
 		binding.hostEditText.setText(intent.getStringExtra(EXTRA_HOST) ?: "255.255.255.255")
-		binding.broadcastCheckBox.isChecked = intent.getBooleanExtra(EXTRA_BROADCAST, true)
+		binding.broadcastCheckBox.isChecked = intent.getBooleanExtra(EXTRA_BROADCAST, false)
 
 		binding.registButton.setOnClickListener { doRegist() }
 

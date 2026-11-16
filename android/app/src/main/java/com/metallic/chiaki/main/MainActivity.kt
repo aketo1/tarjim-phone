@@ -181,31 +181,11 @@ class MainActivity : AppCompatActivity()
 		{
 			fun connect() {
 				val connectInfo = ConnectInfo(host.isPS5, host.host, registeredHost.rpRegistKey, registeredHost.rpKey, Preferences(this).videoProfile)
-				// Tarjim: translate on the TV (the normal use), or just look at the picture as a check.
-				MaterialAlertDialogBuilder(this)
-					.setItems(arrayOf("ترجِم: ترجم على التلفزيون", "اختبار: اعرض الصورة على الجوال")) { _, which ->
-						if(which == 0)
-						{
-							// Tarjim reads a fixed, light picture: 1080p, 30 frames, H.264.
-							val profile = com.metallic.chiaki.lib.ConnectVideoProfile.preset(
-								com.metallic.chiaki.lib.VideoResolutionPreset.RES_1080P,
-								com.metallic.chiaki.lib.VideoFPSPreset.FPS_30,
-								com.metallic.chiaki.lib.Codec.CODEC_H264)
-							Intent(this, com.metallic.chiaki.tarjim.TarjimActivity::class.java).let {
-								it.putExtra(com.metallic.chiaki.tarjim.TarjimActivity.EXTRA_CONNECT_INFO, connectInfo.copy(videoProfile = profile))
-								startActivity(it)
-							}
-						}
-						else
-						{
-							com.metallic.chiaki.lib.Session.setAudioMuted(false)
-							Intent(this, StreamActivity::class.java).let {
-								it.putExtra(StreamActivity.EXTRA_CONNECT_INFO, connectInfo)
-								startActivity(it)
-							}
-						}
-					}
-					.show()
+				com.metallic.chiaki.lib.Session.setAudioMuted(false)
+				Intent(this, StreamActivity::class.java).let {
+					it.putExtra(StreamActivity.EXTRA_CONNECT_INFO, connectInfo)
+					startActivity(it)
+				}
 			}
 
 			if(host is DiscoveredDisplayHost && host.discoveredHost.state == DiscoveryHost.State.STANDBY)
