@@ -87,6 +87,7 @@ private class ChiakiNative
 		@JvmStatic external fun videoProfilePreset(resolutionPreset: Int, fpsPreset: Int, codec: Codec): ConnectVideoProfile
 		@JvmStatic external fun sessionCreate(result: CreateResult, connectInfo: ConnectInfo, logFile: String?, logVerbose: Boolean, javaSession: Session)
 		@JvmStatic external fun sessionFree(ptr: Long)
+		@JvmStatic external fun setAudioMuted(muted: Boolean)
 		@JvmStatic external fun sessionStart(ptr: Long): Int
 		@JvmStatic external fun sessionStop(ptr: Long): Int
 		@JvmStatic external fun sessionJoin(ptr: Long): Int
@@ -322,6 +323,12 @@ class CreateError(val errorCode: ErrorCode): Exception("Failed to create a nativ
 
 class Session(connectInfo: ConnectInfo, logFile: String?, logVerbose: Boolean)
 {
+	companion object
+	{
+		/** Applies to sessions created afterwards. Tarjim mutes; the plain picture view does not. */
+		fun setAudioMuted(muted: Boolean) = ChiakiNative.setAudioMuted(muted)
+	}
+
 	interface EventCallback
 	{
 		fun sessionEvent(event: Event)

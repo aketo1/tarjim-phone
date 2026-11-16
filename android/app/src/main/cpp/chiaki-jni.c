@@ -206,6 +206,13 @@ static void android_chiaki_event_cb(ChiakiEvent *event, void *user)
 	(*global_vm)->DetachCurrentThread(global_vm);
 }
 
+static bool tarjim_audio_muted = false;
+
+JNIEXPORT void JNICALL JNI_FCN(setAudioMuted)(JNIEnv *env, jobject obj, jboolean muted)
+{
+	tarjim_audio_muted = muted;
+}
+
 JNIEXPORT void JNICALL JNI_FCN(sessionCreate)(JNIEnv *env, jobject obj, jobject result, jobject connect_info_obj, jstring log_file_str, jboolean log_verbose, jobject java_session)
 {
 	AndroidChiakiSession *session = NULL;
@@ -349,9 +356,14 @@ JNIEXPORT void JNICALL JNI_FCN(sessionCreate)(JNIEnv *env, jobject obj, jobject 
 	chiaki_session_set_event_cb(&session->session, android_chiaki_event_cb, session);
 	chiaki_session_set_video_sample_cb(&session->session, android_chiaki_video_decoder_video_sample, &session->video_decoder);
 
-	ChiakiAudioSink audio_sink;
-	android_chiaki_audio_decoder_get_sink(&session->audio_decoder, &audio_sink);
-	chiaki_session_set_audio_sink(&session->session, &audio_sink);
+	// Tarjim only reads the picture: with the sound muted no audio sink is set,
+	// so the game's sound is never played a second time from the phone.
+	if(!tarjim_audio_muted)
+	{
+		ChiakiAudioSink audio_sink;
+		android_chiaki_audio_decoder_get_sink(&session->audio_decoder, &audio_sink);
+		chiaki_session_set_audio_sink(&session->session, &audio_sink);
+	}
 
 beach:
 	if(!session && log)

@@ -29,7 +29,10 @@ jobs:
           python-version: "3.12"
 
       # nanopb's generator (run by CMake) needs protobuf.
-      - run: pip install protobuf grpcio-tools
+      - run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq protobuf-compiler
+          pip install protobuf grpcio-tools
 
       - uses: actions/cache@v4
         with:
