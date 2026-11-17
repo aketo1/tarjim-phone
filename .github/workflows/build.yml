@@ -41,6 +41,19 @@ jobs:
             ~/.gradle/wrapper
           key: gradle-${{ hashFiles('android/**/*.gradle', 'android/gradle/**') }}
 
+      # Installed here rather than by Gradle on the fly: that download failed once with a broken
+      # archive and took the whole build down. Retried, and checked before building.
+      - name: Android NDK
+        run: |
+          NDK="ndk;28.2.13676358"
+          for attempt in 1 2 3; do
+            yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "$NDK" > /dev/null && break
+            echo "NDK install attempt $attempt failed, retrying"
+            rm -rf "$ANDROID_HOME/ndk/28.2.13676358"
+            sleep 15
+          done
+          test -f "$ANDROID_HOME/ndk/28.2.13676358/source.properties"
+
       - name: Build
         working-directory: android
         run: |
