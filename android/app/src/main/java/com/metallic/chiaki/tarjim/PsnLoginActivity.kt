@@ -132,7 +132,7 @@ class PsnLoginActivity : Activity()
 
 	private companion object
 	{
-		val INK = Color.rgb(10, 11, 15)
+		val INK = Color.rgb(7, 10, 28)  // the app's night sky
 		// The public client of Sony's own Remote Play program, as used by every open-source client.
 		const val CLIENT_ID = "ba495a24-818c-472b-b12d-ff231c1b5745"
 		const val CLIENT_SECRET = "mvaiZkRsAsI1IBkY"

@@ -3,37 +3,86 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#0a0b0f">
+<meta name="theme-color" content="#060818">
 <title>ترجِم</title>
 <link rel="icon" href="icon.png">
 <link rel="stylesheet" href="app.css">
 </head>
 <body class="booting">
-<div class="grain" aria-hidden="true"></div>
 
-<aside class="rail">
-  <div class="brand" title="ترجِم"><img src="icon.png" alt=""><span>ترجِم</span></div>
+<!-- ======================= the night over the dunes (behind everything) ======================= -->
+<div class="sky" aria-hidden="true">
+  <canvas class="stars" id="stars"></canvas>
+  <div class="milky"></div>
+  <svg class="moon" viewBox="0 0 120 120">
+    <defs>
+      <radialGradient id="moon-lit" cx="38%" cy="34%" r="70%"><stop offset="0" stop-color="#fffaf0"/><stop offset=".7" stop-color="#f6e7c8"/><stop offset="1" stop-color="#e2cfa6"/></radialGradient>
+      <mask id="moon-cut"><rect width="120" height="120" fill="#fff"/><circle cx="78" cy="46" r="40" fill="#000"/></mask>
+    </defs>
+    <circle cx="60" cy="60" r="42" fill="url(#moon-lit)" mask="url(#moon-cut)"/>
+  </svg>
+  <i class="twinkle" style="--x:12%;--y:14%;--d:0s"></i><i class="twinkle" style="--x:31%;--y:8%;--d:1.7s"></i>
+  <i class="twinkle" style="--x:58%;--y:19%;--d:3.1s"></i><i class="twinkle" style="--x:77%;--y:11%;--d:.9s"></i>
+  <i class="twinkle" style="--x:88%;--y:31%;--d:2.4s"></i><i class="twinkle" style="--x:45%;--y:36%;--d:4.2s"></i>
+  <i class="meteor"></i>
+  <div class="dawn"></div>
+  <svg class="dunes" viewBox="0 0 1600 420" preserveAspectRatio="xMidYMax slice">
+    <defs>
+      <linearGradient id="dune-a" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#6b3a66"/><stop offset="1" stop-color="#2f1a43"/></linearGradient>
+      <linearGradient id="dune-b" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3f2452"/><stop offset="1" stop-color="#1b1030"/></linearGradient>
+      <linearGradient id="dune-c" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#26163a"/><stop offset="1" stop-color="#110a20"/></linearGradient>
+      <linearGradient id="dune-d" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#140c24"/><stop offset="1" stop-color="#07050f"/></linearGradient>
+      <linearGradient id="crest" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#ffd9b0" stop-opacity="0"/><stop offset=".45" stop-color="#ffd9b0" stop-opacity=".55"/><stop offset="1" stop-color="#ffd9b0" stop-opacity=".1"/></linearGradient>
+    </defs>
+    <path fill="url(#dune-a)" d="M0 214C110 196 214 168 330 176C402 181 444 204 492 220C590 192 712 150 846 160C930 166 984 196 1032 214C1132 186 1248 158 1372 168C1450 174 1520 196 1600 206V420H0Z"/>
+    <path fill="url(#dune-b)" d="M0 268C96 252 190 226 296 236C362 242 398 266 436 286C528 252 640 214 760 226C838 234 884 262 924 284C1018 252 1130 222 1250 232C1330 239 1380 262 1420 280C1480 266 1540 256 1600 256V420H0Z"/>
+    <path fill="none" stroke="url(#crest)" stroke-width="1.6" d="M436 286C528 252 640 214 760 226C838 234 884 262 924 284M1032 214C1132 186 1248 158 1372 168"/>
+    <path fill="url(#dune-c)" d="M0 322C120 300 236 270 362 282C430 288 468 312 506 334C612 296 744 262 880 276C958 284 1004 312 1046 334C1150 302 1262 278 1386 290C1468 298 1530 318 1600 326V420H0Z"/>
+    <path fill="none" stroke="url(#crest)" stroke-width="1.4" d="M0 322C120 300 236 270 362 282C430 288 468 312 506 334M1046 334C1150 302 1262 278 1386 290"/>
+    <path fill="url(#dune-d)" d="M0 372C150 350 300 330 450 340C540 346 590 366 640 384C760 352 900 330 1040 342C1120 349 1170 368 1210 384C1320 360 1460 348 1600 356V420H0Z"/>
+  </svg>
+</div>
+
+<!-- the liquid-glass filters are written here by glass.js, one per size -->
+<svg class="defs" aria-hidden="true" width="0" height="0"><defs id="glass-defs">
+  <linearGradient id="g-sun" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ffe08a"/><stop offset=".48" stop-color="#ffa24f"/><stop offset="1" stop-color="#ff5f6d"/></linearGradient>
+  <linearGradient id="g-night" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#3a3170" stop-opacity=".9"/><stop offset="1" stop-color="#151230" stop-opacity=".92"/></linearGradient>
+  <linearGradient id="g-gloss" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".55"/><stop offset=".45" stop-color="#fff" stop-opacity="0"/></linearGradient>
+  <linearGradient id="g-rim" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".9"/><stop offset=".35" stop-color="#fff" stop-opacity=".08"/><stop offset=".65" stop-color="#fff" stop-opacity=".05"/><stop offset="1" stop-color="#fff" stop-opacity=".55"/></linearGradient>
+  <linearGradient id="g-spark" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="200" y2="0"><stop offset="0" stop-color="#ff6b78"/><stop offset=".5" stop-color="#ffa24f"/><stop offset="1" stop-color="#ffe08a"/></linearGradient>
+  <linearGradient id="g-area" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffb85c" stop-opacity=".32"/><stop offset="1" stop-color="#ffb85c" stop-opacity="0"/></linearGradient>
+</defs></svg>
+
+<div class="edge" aria-hidden="true"></div>
+
+<!-- ======================= the floating glass dock (top on a computer, bottom on a phone) ======================= -->
+<aside class="rail dock lg" id="dock">
+  <div class="brand" title="ترجِم">
+    <span class="mark"><img src="icon.png" alt=""></span>
+    <b>ترجِم</b>
+  </div>
   <nav>
+    <i class="lens" id="lens" aria-hidden="true"></i>
     <button class="nav on" data-view="home">
-      <svg viewBox="0 0 24 24"><path d="M4 11.2 12 4l8 7.2V19a1.5 1.5 0 0 1-1.5 1.5H15v-5.5H9v5.5H5.5A1.5 1.5 0 0 1 4 19z"/></svg><span>الرئيسية</span>
+      <svg viewBox="0 0 24 24"><path class="fill" d="M4.5 10.6 12 4.3l7.5 6.3V19a1.6 1.6 0 0 1-1.6 1.6h-3.4v-5.2h-5v5.2H6.1A1.6 1.6 0 0 1 4.5 19z"/><path d="M4.5 10.6 12 4.3l7.5 6.3V19a1.6 1.6 0 0 1-1.6 1.6h-3.4v-5.2h-5v5.2H6.1A1.6 1.6 0 0 1 4.5 19z"/></svg><span>الرئيسية</span>
     </button>
     <button class="nav" data-view="game">
-      <svg viewBox="0 0 24 24"><path d="M4 7h9M17 7h3M4 12h3M11 12h9M4 17h11M19 17h1"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="12" r="2"/><circle cx="17" cy="17" r="2"/></svg><span>المظهر</span>
+      <svg viewBox="0 0 24 24"><path class="fill" d="M12 3.6a8.4 8.4 0 0 0 0 16.8c1.3 0 1.9-.8 1.9-1.7 0-1.3-1.1-1.5-1.1-2.6 0-1 .8-1.6 1.8-1.6h2c2 0 3.8-1.4 3.8-3.6C20.4 6.9 16.6 3.6 12 3.6z"/><path d="M12 3.6a8.4 8.4 0 0 0 0 16.8c1.3 0 1.9-.8 1.9-1.7 0-1.3-1.1-1.5-1.1-2.6 0-1 .8-1.6 1.8-1.6h2c2 0 3.8-1.4 3.8-3.6C20.4 6.9 16.6 3.6 12 3.6z"/><circle cx="7.8" cy="11.4" r="1.1"/><circle cx="10.4" cy="7.6" r="1.1"/><circle cx="15" cy="7.8" r="1.1"/></svg><span>المظهر</span>
     </button>
     <button class="nav only-remote" data-view="screen">
-      <svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="12" rx="2"/><path d="M8 13h8M10 21h4"/></svg><span>شاشة ثانية</span>
+      <svg viewBox="0 0 24 24"><rect class="fill" x="6.5" y="2.8" width="11" height="18.4" rx="2.8"/><rect x="6.5" y="2.8" width="11" height="18.4" rx="2.8"/><path d="M9.5 10h5M10.5 13h3"/></svg><span>شاشة ثانية</span>
     </button>
     <button class="nav only-app" data-view="setup">
-      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 3v2.5M12 18.5V21M3 12h2.5M18.5 12H21M5.6 5.6l1.8 1.8M16.6 16.6l1.8 1.8M5.6 18.4l1.8-1.8M16.6 7.4l1.8-1.8"/></svg><span>الإعداد</span>
+      <svg viewBox="0 0 24 24"><path class="fill" d="M4 7h16v10H4z" opacity="0"/><path d="M4 7h8.5M16.5 7H20M4 12h3.5M11.5 12H20M4 17h10.5M18.5 17H20"/><circle cx="14.5" cy="7" r="2"/><circle cx="9.5" cy="12" r="2"/><circle cx="16.5" cy="17" r="2"/></svg><span>الإعداد</span>
     </button>
     <button class="nav only-local" data-view="phone">
-      <svg viewBox="0 0 24 24"><rect x="7" y="2.5" width="10" height="19" rx="2.5"/><path d="M11 18.5h2"/></svg><span>الجوال</span>
+      <svg viewBox="0 0 24 24"><rect class="fill" x="7" y="3" width="10" height="18" rx="2.6"/><rect x="7" y="3" width="10" height="18" rx="2.6"/><path d="M11 18h2M19.6 8.2a5 5 0 0 1 0 7.6M3.4 15.8a5 5 0 0 1 0-7.6"/></svg><span>الجوال</span>
     </button>
     <button class="nav only-local" data-view="guide">
-      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.4a2.5 2.5 0 1 1 3.6 2.3c-.8.4-1.2 1-1.2 1.9M12 17h.01"/></svg><span>الدليل</span>
+      <svg viewBox="0 0 24 24"><circle class="fill" cx="12" cy="12" r="8.6"/><circle cx="12" cy="12" r="8.6"/><path d="m15.4 8.6-2.1 4.7-4.7 2.1 2.1-4.7z"/></svg><span>الدليل</span>
     </button>
   </nav>
-  <div class="rail-foot only-local" id="power-chip" title=""><svg viewBox="0 0 24 24"><path d="M13 3 5 13.5h6L10 21l8-10.5h-6z"/></svg></div>
+  <div class="rail-foot only-local" id="power-chip" title=""><svg viewBox="0 0 24 24"><path d="M13 3 5.5 13.2h5.6L10.2 21l7.6-10.3h-5.7z"/></svg></div>
 </aside>
 
 <main>
@@ -45,12 +94,13 @@
         <p class="sub" id="home-sub">اختر اللعبة واضغط «ابدأ». الباقي علينا.</p>
       </div>
       <div class="row">
-        <label class="picker" title="اللعبة">
-          <svg viewBox="0 0 24 24"><path d="M7 8h10a5 5 0 0 1 4.9 6l-.5 2.6a2.4 2.4 0 0 1-4.3 1L15.5 16h-7l-1.6 1.6a2.4 2.4 0 0 1-4.3-1L2.1 14A5 5 0 0 1 7 8z"/><path d="M8 11v3M6.5 12.5h3M16 12h.01M18 13.5h.01"/></svg>
+        <label class="picker lg" title="اللعبة">
+          <svg viewBox="0 0 24 24"><path d="M7.2 8.4h9.6a4.8 4.8 0 0 1 4.7 5.8l-.5 2.4a2.3 2.3 0 0 1-4.1.9L15.3 16H8.7l-1.6 1.5a2.3 2.3 0 0 1-4.1-.9l-.5-2.4a4.8 4.8 0 0 1 4.7-5.8z"/><path d="M8.2 11.2v3M6.7 12.7h3M15.9 12.2h.01M17.9 13.6h.01"/></svg>
           <select id="game" aria-label="اللعبة"></select>
+          <svg class="chev" viewBox="0 0 24 24"><path d="m7 10 5 5 5-5"/></svg>
         </label>
         <button class="btn soft lib-open" title="قوائم أسماء جاهزة لألعاب ما فيها عربي">
-          <svg viewBox="0 0 24 24"><path d="M5 19.5V5.5A1.5 1.5 0 0 1 6.5 4H9v15.5M9 4h3.5v15.5"/><path d="m14.6 5.3 3-.8 3.3 14.4-3 .8z"/><path d="M3.5 19.5h17"/></svg>مكتبة الألعاب
+          <svg viewBox="0 0 24 24"><path d="M5 19.5v-14A1.5 1.5 0 0 1 6.5 4H9v15.5M9 4h3.5v15.5"/><path d="m14.6 5.3 3-.8 3.3 14.4-3 .8z"/><path d="M3.5 19.5h17"/></svg>مكتبة الألعاب
         </button>
       </div>
     </header>
@@ -59,14 +109,28 @@
       <div class="tvset">
         <div class="glow" aria-hidden="true"></div>
         <div class="tv-frame">
-          <div class="scene" aria-hidden="true">
-            <i class="moon"></i>
-            <svg class="hills h1" viewBox="0 0 1200 300" preserveAspectRatio="none"><path d="M0 300V190l90-48 80 30 110-82 120 96 90-40 130 70 100-110 140 120 110-60 130 64 100-30v180z"/></svg>
-            <svg class="hills h2" viewBox="0 0 1200 300" preserveAspectRatio="none"><path d="M0 300V230l140-50 120 44 160-70 150 76 170-58 160 70 140-40 160 48v50z"/></svg>
-            <svg class="hills h3" viewBox="0 0 1200 300" preserveAspectRatio="none"><path d="M0 300v-40l200-34 220 30 240-44 230 46 310-36v78z"/></svg>
-          </div>
+          <svg class="scene" viewBox="0 0 1600 900" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+            <defs>
+              <linearGradient id="tv-sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1c1642"/><stop offset=".42" stop-color="#5a2b63"/><stop offset=".66" stop-color="#c4506a"/><stop offset=".8" stop-color="#f28a58"/><stop offset=".92" stop-color="#ffc477"/></linearGradient>
+              <radialGradient id="tv-sunglow" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#ffe6a8" stop-opacity=".9"/><stop offset=".35" stop-color="#ffb470" stop-opacity=".45"/><stop offset="1" stop-color="#ff8a5c" stop-opacity="0"/></radialGradient>
+            </defs>
+            <rect width="1600" height="900" fill="url(#tv-sky)"/>
+            <circle class="sunglow" cx="1060" cy="640" r="420" fill="url(#tv-sunglow)"/>
+            <circle cx="1060" cy="650" r="118" fill="#ffe7ae"/>
+            <path fill="#8d3f62" d="M0 690h120l30-60h210l40 64h170l60-118h260l50 92h120l36-50h250l60 80h194v302H0z" opacity=".9"/>
+            <path fill="#4c2150" d="M0 760h220l46-72h180l26 52h300l70-104h210l44 80h190l56-40h258v374H0z"/>
+            <path fill="#1d0f2a" d="M0 820c180-30 400-44 620-30s420 40 620 26c140-10 260-30 360-40v124H0z"/>
+            <g fill="#120818">
+              <path d="M300 806v-74a14 14 0 0 1 28 0v74zm-32-40v-22a10 10 0 0 1 20 0v22zm60-14v-18a10 10 0 0 1 20 0v18z"/>
+              <path d="M268 766h30v10h-30zm60-14h30v10h-30z"/>
+              <path d="M1330 810v-52a11 11 0 0 1 22 0v52zm-24-28v-16a8 8 0 0 1 16 0v16zm46-10v-14a8 8 0 0 1 16 0v14zm-46 8h24v8h-24zm46-10h24v8h-24z"/>
+            </g>
+            <g class="birds" fill="none" stroke="#2a1430" stroke-width="5" stroke-linecap="round">
+              <path d="M560 300q16-14 30 0q14-14 30 0"/><path d="M640 262q12-10 22 0q10-10 22 0"/><path d="M500 250q10-8 18 0q8-8 18 0"/>
+            </g>
+          </svg>
           <div class="tv-top">
-            <span class="badge" id="tv-badge"><i></i><b id="tv-badge-t">معاينة</b></span>
+            <span class="badge lg" id="tv-badge"><i></i><b id="tv-badge-t">معاينة</b></span>
             <span class="tv-clock" id="tv-clock"></span>
           </div>
           <div class="subs">
@@ -74,46 +138,60 @@
             <div class="tv-ar" id="tv-ar"></div>
           </div>
         </div>
-        <div class="tv-stand" aria-hidden="true"></div>
       </div>
 
       <aside class="deck">
+        <div class="sadu" aria-hidden="true"></div>
         <button class="go" id="orb" aria-label="تشغيل الترجمة">
-          <span class="go-ic">
-            <svg class="ic-play" viewBox="0 0 24 24"><path d="M8 5.2v13.6a.8.8 0 0 0 1.2.7l11-6.8a.8.8 0 0 0 0-1.4l-11-6.8a.8.8 0 0 0-1.2.7z"/></svg>
-            <svg class="ic-stop" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="2.5"/></svg>
-            <i class="ic-spin"></i>
+          <span class="go-blob">
+            <i class="go-halo" aria-hidden="true"></i>
+            <svg class="blob" viewBox="0 0 200 200" aria-hidden="true">
+              <path class="shape sun" fill="url(#g-sun)"/>
+              <path class="shape night" fill="url(#g-night)"/>
+              <path class="shape gloss" fill="url(#g-gloss)"/>
+              <path class="shape rim" fill="none" stroke="url(#g-rim)" stroke-width="1.6"/>
+            </svg>
+            <span class="go-ic">
+              <svg class="ic-play" viewBox="0 0 24 24"><path d="M8.6 5.6v12.8a.9.9 0 0 0 1.4.8l10.1-6.4a.9.9 0 0 0 0-1.6L10 4.8a.9.9 0 0 0-1.4.8z"/></svg>
+              <svg class="ic-stop" viewBox="0 0 24 24"><rect x="6.5" y="6.5" width="11" height="11" rx="3"/></svg>
+            </span>
           </span>
           <span class="go-t"><b id="orb-title">ابدأ الترجمة</b><small id="orb-step">جاهز</small></span>
         </button>
         <div class="progress" id="progress" aria-hidden="true"><i></i><i></i><i></i></div>
         <div class="alert" id="alert" hidden></div>
 
-        <ol class="path" id="path">
-          <li id="n-ps5"><span class="pin"></span><div><b id="n-ps5-n">الـPS5</b><small id="n-ps5-t">أفحص…</small></div><em id="n-ps5-s"></em></li>
-          <li id="n-pc"><span class="pin"></span><div><b>اللابتوب</b><small id="n-pc-t">أفحص…</small></div><em id="n-pc-s"></em></li>
-          <li id="n-tv"><span class="pin"></span><div><b>التلفزيون</b><small id="n-tv-t">أفحص…</small></div><em id="n-tv-s"></em></li>
-        </ol>
-        <button class="textbtn" id="recheck">أعد الفحص</button>
         <button class="btn soft only-app" id="rest">
           <svg viewBox="0 0 24 24"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></svg>عتّم الشاشة ووفّر البطارية
         </button>
       </aside>
+
+      <div class="chain">
+        <ol class="path" id="path">
+          <li id="n-ps5"><span class="pin"><svg viewBox="0 0 24 24"><path d="M7.2 8.4h9.6a4.8 4.8 0 0 1 4.7 5.8l-.5 2.4a2.3 2.3 0 0 1-4.1.9L15.3 16H8.7l-1.6 1.5a2.3 2.3 0 0 1-4.1-.9l-.5-2.4a4.8 4.8 0 0 1 4.7-5.8z"/><path d="M8.2 11.2v3M6.7 12.7h3"/></svg></span><div><b id="n-ps5-n">الـPS5</b><small id="n-ps5-t">أفحص…</small></div><em id="n-ps5-s"></em></li>
+          <li id="n-pc"><span class="pin"><svg class="ic-laptop" viewBox="0 0 24 24"><rect x="4.5" y="5" width="15" height="10.5" rx="1.6"/><path d="M2.5 19h19"/></svg><svg class="ic-phone" viewBox="0 0 24 24"><rect x="7" y="3" width="10" height="18" rx="2.6"/><path d="M11 18h2"/></svg></span><div><b id="n-pc-n">اللابتوب</b><small id="n-pc-t">أفحص…</small></div><em id="n-pc-s"></em></li>
+          <li id="n-tv"><span class="pin"><svg viewBox="0 0 24 24"><rect x="3" y="4.5" width="18" height="12.5" rx="2"/><path d="M8.5 20.5h7"/></svg></span><div><b>التلفزيون</b><small id="n-tv-t">أفحص…</small></div><em id="n-tv-s"></em></li>
+        </ol>
+        <button class="textbtn" id="recheck" title="أعد الفحص"><svg viewBox="0 0 24 24"><path d="M19.5 12a7.5 7.5 0 1 1-2.2-5.3M19.5 4.5v4h-4"/></svg><span>أعد الفحص</span></button>
+      </div>
     </div>
 
     <div class="stats">
       <div class="stat wide">
-        <div><span>السرعة</span><b id="s-ms">—</b><small>من ظهور الإنجليزي إلى العربي</small></div>
+        <div class="stat-n">
+          <span><svg viewBox="0 0 24 24"><path d="M13 3 5.5 13.2h5.6L10.2 21l7.6-10.3h-5.7z"/></svg>السرعة</span>
+          <b id="s-ms">—</b><small>من ظهور الإنجليزي إلى العربي</small>
+        </div>
         <svg id="spark" viewBox="0 0 200 48" preserveAspectRatio="none" aria-hidden="true"><path class="area" d=""/><path class="line" d=""/></svg>
       </div>
-      <div class="stat"><span>سطور مترجمة</span><b id="s-lines">0</b></div>
-      <div class="stat"><span>صورة بالثانية</span><b id="s-fps">—</b></div>
+      <div class="stat"><span><svg viewBox="0 0 24 24"><path d="M5 7h14M5 12h10M5 17h12"/></svg>سطور مترجمة</span><b id="s-lines">0</b></div>
+      <div class="stat"><span><svg viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="14" rx="2.5"/><path d="M8 5v14M16 5v14"/></svg>صورة بالثانية</span><b id="s-fps">—</b></div>
     </div>
 
     <div class="card feed">
       <div class="card-head">
         <h3>آخر السطور</h3>
-        <span class="muted" id="feed-count"></span>
+        <span class="chip" id="feed-count"></span>
       </div>
       <ol id="feed"><li class="empty">أول ما تتكلم الشخصيات في اللعبة، السطور تطلع هنا. وتقدر تعدّل أي ترجمة ما عجبتك وتنحفظ للمرة الجاية.</li></ol>
     </div>
@@ -127,13 +205,14 @@
         <p class="sub">كل تغيير ينحفظ لحاله، ولو الترجمة شغّالة يتطبّق على التلفزيون فوراً.</p>
       </div>
       <div class="row">
-        <label class="picker" title="اللعبة">
-          <svg viewBox="0 0 24 24"><path d="M7 8h10a5 5 0 0 1 4.9 6l-.5 2.6a2.4 2.4 0 0 1-4.3 1L15.5 16h-7l-1.6 1.6a2.4 2.4 0 0 1-4.3-1L2.1 14A5 5 0 0 1 7 8z"/><path d="M8 11v3M6.5 12.5h3M16 12h.01M18 13.5h.01"/></svg>
+        <label class="picker lg" title="اللعبة">
+          <svg viewBox="0 0 24 24"><path d="M7.2 8.4h9.6a4.8 4.8 0 0 1 4.7 5.8l-.5 2.4a2.3 2.3 0 0 1-4.1.9L15.3 16H8.7l-1.6 1.5a2.3 2.3 0 0 1-4.1-.9l-.5-2.4a4.8 4.8 0 0 1 4.7-5.8z"/><path d="M8.2 11.2v3M6.7 12.7h3M15.9 12.2h.01M17.9 13.6h.01"/></svg>
           <select id="game2" aria-label="اللعبة"></select>
+          <svg class="chev" viewBox="0 0 24 24"><path d="m7 10 5 5 5-5"/></svg>
         </label>
-        <button class="btn soft" id="new-game">+ لعبة</button>
+        <button class="btn soft" id="new-game"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>لعبة</button>
         <button class="btn soft lib-open" title="قوائم أسماء جاهزة لألعاب ما فيها عربي">
-          <svg viewBox="0 0 24 24"><path d="M5 19.5V5.5A1.5 1.5 0 0 1 6.5 4H9v15.5M9 4h3.5v15.5"/><path d="m14.6 5.3 3-.8 3.3 14.4-3 .8z"/><path d="M3.5 19.5h17"/></svg>المكتبة
+          <svg viewBox="0 0 24 24"><path d="M5 19.5v-14A1.5 1.5 0 0 1 6.5 4H9v15.5M9 4h3.5v15.5"/><path d="m14.6 5.3 3-.8 3.3 14.4-3 .8z"/><path d="M3.5 19.5h17"/></svg>المكتبة
         </button>
       </div>
     </header>
@@ -143,9 +222,12 @@
         <div class="card preview">
           <div class="preview-box"><img id="preview" alt="معاينة الترجمة"><div class="shimmer" id="preview-load"></div></div>
           <div class="preview-tools">
-            <input class="text" id="preview-text" value="يجب أن نغادر قبل وصول العاصفة." aria-label="نص المعاينة">
+            <label class="field-input">
+              <svg viewBox="0 0 24 24"><path d="M4 20h4l10.5-10.5a2.1 2.1 0 0 0-3-3L5 17z"/><path d="m14 8 3 3"/></svg>
+              <input id="preview-text" value="يجب أن نغادر قبل وصول العاصفة." aria-label="نص المعاينة">
+            </label>
             <button class="btn soft" id="try-tv" title="يعرض السطر على التلفزيون 8 ثواني">
-              <svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="12" rx="2"/><path d="M9 21h6"/></svg>جرّب على التلفزيون
+              <svg viewBox="0 0 24 24"><rect x="3" y="4.5" width="18" height="12.5" rx="2"/><path d="M8.5 20.5h7"/></svg>جرّب على التلفزيون
             </button>
           </div>
         </div>
@@ -154,7 +236,7 @@
 
       <div class="studio-controls">
         <div class="card">
-          <div class="card-head"><h3>الشكل</h3></div>
+          <div class="card-head"><h3><i class="h-ic"><svg viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="14" rx="3"/><path d="M7.5 15h9"/></svg></i>الشكل</h3></div>
           <div class="field">
             <div class="field-head"><b>وش يصير بالإنجليزي؟</b></div>
             <div class="seg" id="bg">
@@ -187,7 +269,7 @@
         </div>
 
         <div class="card">
-          <div class="card-head"><h3>الخط</h3><span id="size-val" class="muted"></span></div>
+          <div class="card-head"><h3><i class="h-ic"><svg viewBox="0 0 24 24"><path d="M5 19 10.5 5h3L19 19M7.6 13.5h8.8"/></svg></i>الخط</h3><span id="size-val" class="chip"></span></div>
           <div class="fonts" id="fonts"></div>
           <div class="field">
             <label class="switch"><input type="checkbox" id="size-auto"><i></i><span>حجم تلقائي <small>يقيس خط اللعبة مرة ويثبّته</small></span></label>
@@ -196,7 +278,7 @@
         </div>
 
         <div class="card">
-          <div class="card-head"><h3>التوقيت</h3></div>
+          <div class="card-head"><h3><i class="h-ic"><svg viewBox="0 0 24 24"><circle cx="12" cy="13" r="7.5"/><path d="M12 9.5V13l2.5 2M10 3h4"/></svg></i>التوقيت</h3></div>
           <label class="switch"><input type="checkbox" id="typewriter"><i></i>
             <span>اللعبة تكتب النص حرف حرف <small>فعّلها لو الترجمة تطلع قبل ما يكتمل السطر.</small></span></label>
           <div class="field">
@@ -209,10 +291,10 @@
 
       <div class="card region">
         <div class="card-head">
-          <div><h3>وين يقرأ البرنامج؟</h3>
+          <div><h3><i class="h-ic"><svg viewBox="0 0 24 24"><path d="M4 8V5.5A1.5 1.5 0 0 1 5.5 4H8M16 4h2.5A1.5 1.5 0 0 1 20 5.5V8M20 16v2.5a1.5 1.5 0 0 1-1.5 1.5H16M8 20H5.5A1.5 1.5 0 0 1 4 18.5V16"/><path d="M8 13h8"/></svg></i>وين يقرأ البرنامج؟</h3>
           <p class="muted">اسحب الإطار فوق المكان اللي تطلع فيه ترجمة اللعبة. اللي برّاه ما ينقرأ، فما يلقط القوايم والعدّادات.</p></div>
           <div class="row">
-            <button class="btn soft" id="region-shot">حدّث الصورة</button>
+            <button class="btn soft" id="region-shot"><svg viewBox="0 0 24 24"><path d="M19.5 12a7.5 7.5 0 1 1-2.2-5.3M19.5 4.5v4h-4"/></svg>حدّث الصورة</button>
             <button class="btn soft" id="region-reset">الافتراضي</button>
           </div>
         </div>
@@ -228,7 +310,7 @@
 
       <div class="card glossary">
         <div class="card-head">
-          <div><h3>قاموس الأسماء <span class="count" id="names-count"></span></h3>
+          <div><h3><i class="h-ic"><svg viewBox="0 0 24 24"><circle cx="9" cy="8.5" r="3.5"/><path d="M3 19.5a6 6 0 0 1 12 0M16 5.5a3.5 3.5 0 0 1 0 6.5M18.5 19.5a6 6 0 0 0-2.5-4.8"/></svg></i>قاموس الأسماء <span class="count" id="names-count"></span></h3>
           <p class="muted">الاسم مثل ما يطلع بالإنجليزي، وكيف تبيه بالعربي. يثبت في كل السطور حتى لو المترجم فهمه كلمة عادية. علّم ♀ لأسماء النساء عشان تطلع الأفعال مؤنثة.</p></div>
           <div class="row wrap">
             <button class="btn soft" id="pack-export" title="ملف فيه أسماء اللعبة وترجماتك ومكان الترجمة، تحفظه أو ترسله لغيرك">
@@ -237,7 +319,7 @@
             <button class="btn soft" id="pack-import" title="ملف لعبة من ترجِم: من صديق، أو من جهازك الثاني">
               <svg viewBox="0 0 24 24"><path d="M12 16V5M7.5 9.5 12 5l4.5 4.5M5 20h14"/></svg>استورد ملف
             </button>
-            <button class="btn soft" id="add-name">+ اسم</button>
+            <button class="btn" id="add-name"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>اسم</button>
           </div>
         </div>
         <label class="names-find" id="names-find-box" hidden>
@@ -270,14 +352,14 @@
     </header>
     <div class="setup-grid">
       <div class="card">
-        <div class="card-head"><h3>التلفزيون</h3><span class="muted" id="su-tv-state"></span></div>
+        <div class="card-head"><h3><i class="h-ic"><svg viewBox="0 0 24 24"><rect x="3" y="4.5" width="18" height="12.5" rx="2"/><path d="M8.5 20.5h7"/></svg></i>التلفزيون</h3><span class="muted" id="su-tv-state"></span></div>
         <input class="text ltr" id="su-tv" placeholder="192.168.1.50" inputmode="decimal" maxlength="15" aria-label="عنوان التلفزيون">
         <p class="muted">افتح تطبيق «ترجِم» على التلفزيون وتلقى العنوان مكتوب بالأصفر. لو التطبيق مو على التلفزيون، يتثبّت مرة وحدة من نسخة الكمبيوتر.</p>
       </div>
       <div class="card" id="su-xbox" hidden></div>
       <div class="card" id="su-ps5card">
         <div class="seg kind" id="kind"><button data-v="ps5" class="on">PlayStation 5</button><button data-v="xbox">Xbox</button></div>
-        <div class="card-head"><h3>الـPS5</h3><span class="muted" id="su-ps5-state"></span></div>
+        <div class="card-head"><h3><i class="h-ic"><svg viewBox="0 0 24 24"><path d="M7.2 8.4h9.6a4.8 4.8 0 0 1 4.7 5.8l-.5 2.4a2.3 2.3 0 0 1-4.1.9L15.3 16H8.7l-1.6 1.5a2.3 2.3 0 0 1-4.1-.9l-.5-2.4a4.8 4.8 0 0 1 4.7-5.8z"/><path d="M8.2 11.2v3M6.7 12.7h3"/></svg></i>الـPS5</h3><span class="muted" id="su-ps5-state"></span></div>
         <input class="text ltr" id="su-ps5" placeholder="192.168.1.60" inputmode="decimal" maxlength="15" aria-label="عنوان الـPS5">
         <p class="muted">في الـPS5: الإعدادات ‹ الشبكة ‹ عرض حالة الاتصال ‹ عنوان IP.</p>
         <div class="linked" id="su-linked"></div>
@@ -291,7 +373,7 @@
         <p class="muted">ليش حساب ثاني؟ لو اتصل الجوال بنفس الحساب اللي تلعب فيه، الـPS5 يفصل يدك. الحساب الثاني للنسخة بس.</p>
       </div>
       <div class="card">
-        <div class="card-head"><h3>عشان ما يتأخر ولا يفصل</h3></div>
+        <div class="card-head"><h3><i class="h-ic"><svg viewBox="0 0 24 24"><rect x="3" y="7" width="15" height="10" rx="2.5"/><path d="M21 10.5v3M7 10.5v3"/></svg></i>عشان ما يتأخر ولا يفصل</h3></div>
         <ol class="todo">
           <li><div><b>شبّك الشاحن.</b> الترجمة شغل متواصل.</div></li>
           <li><div><b>لا تقفل شاشة الجوال.</b> أندرويد يبطّئ التطبيق لو انطفت الشاشة (الترجمة تتأخر ثانية ونص ثم يفصل). استخدم زر «عتّم الشاشة» في الرئيسية: الشاشة تصير سوداء وما تستهلك شي تقريباً.</div></li>
@@ -331,7 +413,7 @@
         </div>
       </div>
       <div class="card">
-        <div class="card-head"><h3>الأجهزة المربوطة</h3></div>
+        <div class="card-head"><h3><i class="h-ic"><svg viewBox="0 0 24 24"><rect x="7" y="3" width="10" height="18" rx="2.6"/><path d="M11 18h2"/></svg></i>الأجهزة المربوطة</h3></div>
         <div id="phone-devices"><p class="muted">ما فيه جوال مربوط.</p></div>
       </div>
     </div>
@@ -349,7 +431,7 @@
     <div class="card guide-body" id="guide-body"></div>
     <div class="guide-nav">
       <button class="btn soft" id="g-prev">السابق</button>
-      <span class="muted" id="g-pos"></span>
+      <span class="chip" id="g-pos"></span>
       <button class="btn" id="g-next">التالي</button>
     </div>
   </section>
@@ -357,15 +439,18 @@
 
 <!-- pairing screen for a phone that is not trusted yet -->
 <div class="pair" id="pair" hidden>
-  <img src="icon.png" alt="">
-  <h2>اربط الجوال بترجِم</h2>
-  <p>في ترجِم على اللابتوب افتح <b>«الجوال»</b> واكتب الرمز اللي تشوفه هناك.</p>
-  <input id="pair-pin" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="••••••" dir="ltr" aria-label="رمز الربط">
-  <button class="btn" id="pair-go">اربط</button>
-  <div class="alert" id="pair-err" hidden></div>
+  <div class="pair-card">
+    <div class="sadu" aria-hidden="true"></div>
+    <span class="mark big"><img src="icon.png" alt=""></span>
+    <h2>اربط الجوال بترجِم</h2>
+    <p>في ترجِم على اللابتوب افتح <b>«الجوال»</b> واكتب الرمز اللي تشوفه هناك.</p>
+    <input id="pair-pin" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="••••••" dir="ltr" aria-label="رمز الربط">
+    <button class="btn" id="pair-go">اربط</button>
+    <div class="alert" id="pair-err" hidden></div>
+  </div>
 </div>
 
-<a class="apk-banner" id="apk-banner" href="/tarjim.apk" hidden>
+<a class="apk-banner lg" id="apk-banner" href="/tarjim.apk" hidden>
   <svg viewBox="0 0 24 24"><path d="M12 4v11M7.5 11 12 15.5 16.5 11M5 20h14"/></svg>نزّل تطبيق أندرويد
 </a>
 
@@ -374,10 +459,11 @@
   <div class="rest-hint">اضغط مرتين للرجوع</div>
 </div>
 
-<div class="toast" id="toast" role="status"></div>
+<div class="toast lg" id="toast" role="status" popover="manual"></div>
 
 <dialog id="dlg-new">
   <form method="dialog" class="dlg">
+    <div class="sadu" aria-hidden="true"></div>
     <h3>لعبة جديدة</h3>
     <p class="muted">اكتب اسم اللعبة. كل لعبة لها شكلها وقاموس أسمائها.</p>
     <input class="text" id="new-title" placeholder="مثال: Silent Hill 2" dir="auto" maxlength="60">
@@ -395,7 +481,7 @@
         <h3 id="lib-h">مكتبة الألعاب</h3>
         <p class="muted">قوائم أسماء جاهزة لألعاب ما فيها عربي: الشخصيات والأماكن والعصابات مكتوبة صح، والأسماء النسائية معلّمة. اختر لعبتك وتنضاف بضغطة، وتقدر تعدّل أي اسم بعدها.</p>
       </div>
-      <button class="x" id="lib-close" aria-label="إغلاق">×</button>
+      <button class="x" id="lib-close" aria-label="إغلاق"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
     </header>
     <label class="names-find">
       <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4 4"/></svg>
@@ -407,6 +493,7 @@
 
 <dialog id="dlg-import">
   <form method="dialog" class="dlg">
+    <div class="sadu" aria-hidden="true"></div>
     <h3>استيراد ملف لعبة</h3>
     <div class="imp-card"><b id="imp-title" dir="auto"></b><span class="muted" id="imp-sub"></span></div>
     <label class="field-head" for="imp-into"><b>تنضاف إلى</b></label>
@@ -430,6 +517,7 @@
   </form>
 </dialog>
 
+<script src="glass.js"></script>
 <script src="xbox.js"></script>
 <script src="app.js"></script>
 </body>

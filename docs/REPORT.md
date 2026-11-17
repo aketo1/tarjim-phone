@@ -221,6 +221,8 @@ state: written from the laptop library's request shapes, never run.
   section 2 as not verified.
 - The code is under AGPL-3.0 (from chiaki-ng). Personal, non-distributed project.
 - Talk to the user in simple Saudi Arabic; code and commits in English.
+- The page (`assets/web`) is a copy of the laptop program's: change it there
+  and copy it with its `launcher/sync_phone_web.py` (section 12).
 
 ## 11. Game files, the game library, and names (added 2026-11-17)
 
@@ -260,3 +262,39 @@ was clicked through in Chrome.
 **Not verified:** nothing of this has run on a phone yet (the phone was not
 connected): the file picker, the share sheet, "Open with", the library and the
 import on Android are untested.
+
+## 12. A new look: desert night and liquid glass (added 2026-11-17)
+
+The page was redone from scratch, together with the laptop program's (its
+report, section 18, has the full description and how the liquid glass works).
+What matters on the phone:
+
+- **The same page, copied.** `assets/web` is now a byte-for-byte copy of the
+  laptop repository's `laptop/tarjim/app/web`, made by its
+  `launcher/sync_phone_web.py`. The phone-only parts (the «الإعداد» tab, «عتّم
+  الشاشة», the resting screen) live in that one page and show only inside this
+  app. Do not edit `assets/web` here: change the laptop's page and copy it.
+- **New file `assets/web/glass.js`**: stars, liquid glass, the dock's lens,
+  the start button's shapes. The page loads it before `app.js`.
+- **On a phone** the dock is a glass capsule at the bottom, sheets rise from
+  the bottom with a grabber, and the content panels are opaque (no blur) to
+  save power. While a translation runs, the glass falls back to plain blur and
+  the sky and the start button stand still, so the phone's power goes to the
+  picture, the reading and the translation. The resting screen is unchanged
+  (pure black).
+- **The middle device on the home screen is «الجوال»** (it said «اللابتوب»
+  inside this app) with a phone icon.
+- **Native colours follow the page:** status bar `#04050F` (the top of the
+  sky), navigation bar `#07050F` (the dunes), the WebView's and the window's
+  background `#070A1C`, the Sony sign-in screen too. The launcher icon is new
+  (made by the laptop repository's `launcher/make_icon.py`, which now writes
+  this app's `mipmap-*` and `assets/web/icon.png`).
+
+**Verified:** the app builds with the new page (`gradlew -PtarjimPrebuilt
+assembleDebug`; `glass.js` and the new icon are inside the APK). The page was
+clicked through in Chrome with the phone mode switched on (the three tabs,
+«الإعداد») and photographed at phone width.
+**Not verified:** nothing ran on the phone (it was not connected). The
+refraction needs the WebView's Chromium SVG backdrop filters; the S20 FE's
+WebView should have them, but it is unseen. Messages above an open sheet need
+popovers (WebView 114 or newer); an older WebView shows them as before.

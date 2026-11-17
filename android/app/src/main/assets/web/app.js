@@ -42,9 +42,17 @@ let toastTimer;
 function toast(msg) {
   const t = $("#toast");
   t.textContent = msg;
-  t.classList.add("on");
+  // A popover sits above an open sheet (the library, a question), so the message is never hidden behind it.
+  try {
+    if (t.matches(":popover-open")) t.hidePopover();
+    t.showPopover?.();
+  } catch { /* no popovers in this browser: the plain element still shows */ }
+  requestAnimationFrame(() => t.classList.add("on"));
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => t.classList.remove("on"), 2400);
+  toastTimer = setTimeout(() => {
+    t.classList.remove("on");
+    toastTimer = setTimeout(() => { try { t.hidePopover?.(); } catch { /* already closed */ } }, 450);
+  }, 2600);
 }
 
 function ask(title, text, yes = "نعم", danger = true) {
@@ -411,6 +419,7 @@ async function loadProfile() {
 
   renderNames();
   refreshPreview();
+  UI.ranges();
 }
 $("#preview-text").addEventListener("input", refreshPreview);
 
@@ -490,6 +499,7 @@ function renderLook() {
   posLabel();
   pos.oninput = () => { S.profile.y_offset = Number(pos.value); posLabel(); refreshPreview(); };
   pos.onchange = () => save({ y_offset: Number(pos.value) });
+  UI.ranges();
 }
 
 $("#try-tv").addEventListener("click", async e => {
@@ -605,6 +615,13 @@ $("#names-find").addEventListener("input", filterNames);
 
 const LIB = { items: [] };
 const hueOf = text => [...String(text)].reduce((h, c) => (h * 31 + c.codePointAt(0)) % 360, 7);
+// Each series gets its own poster: a colour and a pattern that suit it (no game art). [hue, pattern, saturation]
+const SERIES_LOOK = {
+  "Red Dead": [14, 0, 1], "Grand Theft Auto": [292, 4, 1], "Yakuza": [338, 1, 1], "Like a Dragon": [338, 1, 1],
+  "The Last of Us": [128, 2, .75], "Silent Hill": [222, 1, .4], "Max Payne": [206, 2, .7], "L.A. Noire": [38, 0, .7],
+  "Bully": [22, 2, .9], "Baldur's Gate": [268, 1, 1], "Final Fantasy": [188, 4, 1], "Kingdom Come": [80, 3, .7],
+  "Mafia": [30, 0, .85], "Persona": [356, 2, 1],
+};
 
 async function openLibrary() {
   const d = $("#dlg-library");
@@ -624,7 +641,13 @@ function renderLibrary() {
 }
 function libCard(p) {
   const card = el("article", `lib-card ${p.installed ? "on" : ""}`);
-  card.style.setProperty("--hue", hueOf(p.series || p.title));
+  const family = p.series || p.title;
+  const [hue, pattern, sat] = SERIES_LOOK[family] || [hueOf(family), hueOf(`${family}#`) % 5, 1];
+  card.style.setProperty("--hue", hue);
+  card.style.setProperty("--sat", sat);
+  const poster = el("div", `poster p${pattern}`);
+  poster.append(el("b", "poster-ar", p.title_ar || p.title));
+  if (p.installed) poster.append(el("span", "poster-ok", "✓ مضافة"));
   const title = el("b", "lib-title", p.title);
   title.dir = "ltr";
   const foot = el("div", "lib-foot");
@@ -638,7 +661,7 @@ function libCard(p) {
   b.title = !p.installed ? "تنضاف كلعبة جديدة بقاموسها" : p.new > 0 ? "أسماء جديدة تنضاف لقاموسك، واللي كتبته أنت يبقى" : "";
   b.addEventListener("click", () => addFromLibrary(p, b));
   foot.append(chips, b);
-  card.append(el("div", "lib-top", [p.series, p.year].filter(Boolean).join(" · ")), title,
+  card.append(poster, el("div", "lib-top", [p.series, p.year].filter(Boolean).join(" · ")), title,
     el("span", "lib-ar", p.title_ar), el("p", "lib-note", p.note || ""), foot);
   return card;
 }
@@ -1235,6 +1258,7 @@ async function boot() {
   document.body.classList.toggle("remote", S.remote);
   document.body.classList.toggle("phoneapp", S.app);
   if (S.app) {
+    $("#n-pc-n").textContent = "الجوال";
     // The phone covers the English with a plate; it cannot repaint the scene under the letters.
     for (const preset of PRESETS) if (preset.set.background === "cover") preset.set.background = "plate";
     $("#try-tv").title = "يشتغل والترجمة شغّالة";
@@ -1268,8 +1292,14 @@ async function boot() {
   requestAnimationFrame(() => document.body.classList.remove("booting"));
 
   // ?still&view=game&step=2&demo : a frozen page for screenshots (no live connection, no timers).
+  // &demo also plays a running session; &ok (and &demo) show the three devices ready.
   if (S.still) {
     await runCheck();
+    if (q.has("demo") || q.has("ok")) {
+      setNode("n-ps5", "ok", "PS5 · شغّال", "192.168.1.60");
+      setNode("n-pc", "ok", "على الشاحن · يقرأ ويترجم");
+      setNode("n-tv", "ok", "Android TV · جاهز", "192.168.1.50");
+    }
     if (q.get("step")) S.guideStep = Number(q.get("step"));
     if (q.get("game")) selectGame(q.get("game"));
     if (q.get("view")) go(q.get("view"));
