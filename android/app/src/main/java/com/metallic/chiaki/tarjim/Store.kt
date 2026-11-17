@@ -4,6 +4,7 @@ import android.content.Context
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
+import java.util.Locale
 
 /**
  * Everything Tarjim remembers on the phone: the two addresses, one profile per game
@@ -53,13 +54,14 @@ class Store(private val context: Context)
 			save("default", JSONObject().put("title", "أي لعبة (عام)"))
 		if(!File(profilesDir, "rdr2.json").exists() && !prefs.getBoolean("seeded", false))
 		{
-			val names = JSONObject()
-			for((en, ar) in RDR2) names.put(en, ar)
-			save("rdr2", JSONObject().put("title", "Red Dead Redemption 2").put("glossary", names)
-				.put("female", JSONArray(listOf("Susan", "Grimshaw", "Mary-Beth", "Mary Beth", "Tilly", "Karen", "Abigail", "Sadie"))).put("settle_ms", 40))
+			// A first start comes with the game the app was made for, from the bundled library.
+			try { val packs = Packs(context, this); packs.merge(packs.libraryPack("rdr2"), null) }
+			catch(e: Exception) { save("rdr2", JSONObject().put("title", "Red Dead Redemption 2").put("glossary", JSONObject())) }
 			prefs.edit().putBoolean("seeded", true).apply()
 		}
 	}
+
+	fun exists(name: String) = File(profilesDir, "${safe(name)}.json").exists()
 
 	fun profiles(): List<Pair<String, String>> =
 		(profilesDir.listFiles { f -> f.name.endsWith(".json") } ?: arrayOf()).sortedBy { it.name }.map {
@@ -90,30 +92,69 @@ class Store(private val context: Context)
 	private fun safe(name: String) = name.filter { it in 'a'..'z' || it in '0'..'9' || it == '-' || it == '_' }.ifEmpty { "default" }
 
 	// -- the user's own wording for a line ---------------------------------------------
+	// One copy for the whole app: the running session has its own Store, and a line the
+	// user rewrote must reach it at once (each Store used to keep its own copy).
 
-	private val fixes: JSONObject by lazy { try { JSONObject(fixesFile.readText()) } catch(e: Exception) { JSONObject() } }
-
-	@Synchronized fun fix(profile: String, english: String): String? =
-		fixes.optJSONObject(profile)?.optString(key(english), "")?.takeIf { it.isNotEmpty() }
-
-	@Synchronized fun setFix(profile: String, english: String, arabic: String)
-	{
-		val map = fixes.optJSONObject(profile) ?: JSONObject().also { fixes.put(profile, it) }
-		if(arabic.isBlank()) map.remove(key(english)) else map.put(key(english), arabic.trim())
-		fixesFile.writeText(fixes.toString())
+	private fun fixes(): JSONObject = shared ?: synchronized(lock) {
+		shared ?: load().also { shared = it }
 	}
 
-	private fun key(english: String) = english.trim().replace(Regex("\\s+"), " ")
+	/** The file as written, with every line's key in today's form (older versions kept curly quotes). */
+	private fun load(): JSONObject
+	{
+		val raw = try { JSONObject(fixesFile.readText()) } catch(e: Exception) { JSONObject() }
+		val clean = JSONObject()
+		for(profile in raw.keys())
+		{
+			val src = raw.optJSONObject(profile) ?: continue
+			val dst = JSONObject()
+			for(k in src.keys()) dst.put(key(k), src.optString(k))
+			clean.put(profile, dst)
+		}
+		return clean
+	}
+
+	fun fix(profile: String, english: String): String? = synchronized(lock) {
+		fixes().optJSONObject(profile)?.optString(key(english), "")?.takeIf { it.isNotEmpty() }
+	}
+
+	fun setFix(profile: String, english: String, arabic: String) = synchronized(lock) {
+		val all = fixes()
+		val map = all.optJSONObject(profile) ?: JSONObject().also { all.put(profile, it) }
+		if(arabic.isBlank()) map.remove(key(english)) else map.put(key(english), arabic.trim())
+		fixesFile.writeText(all.toString())
+	}
+
+	/** Every line the user rewrote for this game. */
+	fun fixesOf(profile: String): List<Pair<String, String>> = synchronized(lock) {
+		val map = fixes().optJSONObject(profile) ?: return@synchronized emptyList()
+		map.keys().asSequence().map { Pair(it, map.optString(it)) }.filter { it.second.isNotEmpty() }.toList()
+	}
+
+	/** Many lines at once, one write; a line that already has the user's wording keeps it. Returns how many were added. */
+	fun addFixes(profile: String, rows: List<Pair<String, String>>): Int = synchronized(lock) {
+		val all = fixes()
+		val map = all.optJSONObject(profile) ?: JSONObject().also { all.put(profile, it) }
+		var added = 0
+		for((en, ar) in rows)
+		{
+			val k = key(en)
+			if(k.isEmpty() || ar.isBlank() || map.has(k)) continue
+			map.put(k, ar.trim())
+			added++
+		}
+		if(added > 0) fixesFile.writeText(all.toString())
+		added
+	}
 
 	companion object
 	{
-		private val RDR2 = listOf(
-			"Arthur" to "آرثر", "Morgan" to "مورغان", "Dutch" to "دتش", "Micah" to "مايكا", "Hosea" to "هوزيا",
-			"Pearson" to "بيرسون", "Susan" to "سوزان", "Grimshaw" to "غريمشو", "Mary-Beth" to "ماري بيث",
-			"Mary Beth" to "ماري بيث", "Tilly" to "تيلي", "Karen" to "كارين", "Abigail" to "أبيغيل", "Marston" to "مارستن",
-			"Javier" to "خافيير", "Charles" to "تشارلز", "Lenny" to "ليني", "Sadie" to "سيدي", "Strauss" to "شتراوس",
-			"Swanson" to "سوانسون", "Trelawny" to "تريلوني", "Valentine" to "فالنتاين", "Blackwater" to "بلاكووتر",
-			"van der Linde" to "فان دير ليند", "Bill" to "بيل", "Sean" to "شون", "Uncle" to "العم", "Molly" to "مولي")
+		private val lock = Any()
+		@Volatile private var shared: JSONObject? = null
+
+		/** The same key as the laptop program's: one spacing, straight quotes; case is kept. */
+		fun key(english: String) = english.replace('’', '\'').replace('‘', '\'').replace('“', '"').replace('”', '"')
+			.trim().replace(Regex("\\s+"), " ")
 	}
 }
 
@@ -149,6 +190,11 @@ class Look(profile: JSONObject)
 		female = (0 until f.length()).map { f.optString(it) }.toSet()
 	}
 
+	/** The glossary as compiled patterns, longest name first ("Mary Beth" before "Mary"). Built once per list. */
+	val names: List<Triple<String, String, Regex>> by lazy {
+		glossary.entries.sortedByDescending { it.key.length }.map { Triple(it.key, it.value, namePattern(it.key)) }
+	}
+
 	companion object
 	{
 		const val AUTO_COLOR = 0xFFF2F7F1.toInt()
@@ -161,5 +207,31 @@ class Look(profile: JSONObject)
 
 		val FONTS = mapOf("harmattan" to "Harmattan-Regular.ttf", "harmattan-bold" to "Harmattan-Bold.ttf",
 			"noto-naskh" to "NotoNaskhArabic-VF.ttf", "noto-sans-arabic" to "NotoSansArabic-VF.ttf")
+
+		/** A regex for this text where straight and curly apostrophes count as the same. */
+		private fun literal(text: String) = buildString {
+			for(c in text) when
+			{
+				c == '\'' || c == '’' -> append("['’]")
+				c.isLetterOrDigit() || c == ' ' -> append(c)
+				else -> append('\\').append(c)
+			}
+		}
+
+		/**
+		 * How a glossary name is found in a line, the same rule as the laptop program's: a name
+		 * that starts with a capital ("Chop", "Families") must appear with that capital or all in
+		 * capitals, so the same word in small letters ("chop the wood") is left to the translator;
+		 * a name written in small letters ("van der Linde", "clicker") is found in any case.
+		 */
+		fun namePattern(en: String): Regex
+		{
+			val first = en.firstOrNull { it.isLetter() }
+			if(first == null || !first.isUpperCase())
+				return Regex("(?<![A-Za-z])${literal(en)}(?![A-Za-z])", RegexOption.IGNORE_CASE)
+			val exact = literal(en)
+			val upper = literal(en.uppercase(Locale.ROOT))
+			return Regex("(?<![A-Za-z])" + (if(exact == upper) exact else "(?:$exact|$upper)") + "(?![A-Za-z])")
+		}
 	}
 }

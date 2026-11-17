@@ -566,15 +566,166 @@ function renderRegion() {
 
 function renderNames() {
   const box = $("#names");
-  const collect = () => save({
-    glossary: $$(".name", box).map(r => ({ en: $(".en", r).value, ar: $(".ar", r).value, f: $(".fem", r).classList.contains("on") })),
-  }, true);
+  const collect = () => {
+    const glossary = $$(".name", box).map(r => ({ en: $(".en", r).value, ar: $(".ar", r).value, f: $(".fem", r).classList.contains("on") }));
+    S.profile.glossary = glossary.filter(g => g.en.trim() && g.ar.trim());
+    countNames();
+    save({ glossary }, true);
+  };
   box.replaceChildren(...S.profile.glossary.map(row => nameRow(row, collect)));
+  $("#names-find").value = "";
+  countNames();
+  filterNames();
   $("#add-name").onclick = () => {
+    $("#names-find").value = "";
+    filterNames();
     const r = nameRow({ en: "", ar: "", f: false }, collect);
     box.prepend(r);
     $(".en", r).focus();
   };
+}
+function countNames() {
+  const n = S.profile.glossary.length;
+  $("#names-count").textContent = n ? `· ${n}` : "";
+  $("#names-find-box").hidden = n < 12;  // a search box only where a list is long enough to need one
+}
+function filterNames() {
+  const q = $("#names-find").value.trim().toLowerCase();
+  let shown = 0;
+  for (const r of $$(".name", $("#names"))) {
+    const hit = !q || $(".en", r).value.toLowerCase().includes(q) || $(".ar", r).value.includes(q);
+    r.hidden = !hit;
+    shown += hit;
+  }
+  $("#names-none").hidden = !q || shown > 0;
+}
+$("#names-find").addEventListener("input", filterNames);
+
+/* ---- the game library and game files ---- */
+
+const LIB = { items: [] };
+const hueOf = text => [...String(text)].reduce((h, c) => (h * 31 + c.codePointAt(0)) % 360, 7);
+
+async function openLibrary() {
+  const d = $("#dlg-library");
+  $("#lib-find").value = "";
+  $("#lib-grid").replaceChildren(el("p", "muted lib-wait", "أجيب القائمة…"));
+  if (!d.open) d.showModal();
+  $(".lib", d).focus();  // not the close button: its focus ring on opening looked like a warning
+  try { LIB.items = (await api("/api/packs")).packs; } catch (e) {
+    return $("#lib-grid").replaceChildren(el("p", "alert lib-wait", e.message));
+  }
+  renderLibrary();
+}
+function renderLibrary() {
+  const q = $("#lib-find").value.trim().toLowerCase();
+  const items = LIB.items.filter(p => !q || [p.title, p.title_ar, p.series].some(t => (t || "").toLowerCase().includes(q)));
+  $("#lib-grid").replaceChildren(...(items.length ? items.map(libCard) : [el("p", "muted lib-wait", "ما لقيت لعبة بهالاسم.")]));
+}
+function libCard(p) {
+  const card = el("article", `lib-card ${p.installed ? "on" : ""}`);
+  card.style.setProperty("--hue", hueOf(p.series || p.title));
+  const title = el("b", "lib-title", p.title);
+  title.dir = "ltr";
+  const foot = el("div", "lib-foot");
+  const chips = el("div", "chips");
+  chips.append(el("span", "chip", `${p.names} اسم`));
+  if (p.women) chips.append(el("span", "chip f", `♀ ${p.women}`));
+  let b;
+  if (!p.installed) b = el("button", "btn small", "أضف");
+  else if (p.new > 0) b = el("button", "btn small", `حدّث +${p.new}`);
+  else { b = el("button", "btn soft small done", "مضافة ✓"); b.disabled = true; }
+  b.title = !p.installed ? "تنضاف كلعبة جديدة بقاموسها" : p.new > 0 ? "أسماء جديدة تنضاف لقاموسك، واللي كتبته أنت يبقى" : "";
+  b.addEventListener("click", () => addFromLibrary(p, b));
+  foot.append(chips, b);
+  card.append(el("div", "lib-top", [p.series, p.year].filter(Boolean).join(" · ")), title,
+    el("span", "lib-ar", p.title_ar), el("p", "lib-note", p.note || ""), foot);
+  return card;
+}
+async function addFromLibrary(p, b) {
+  b.disabled = true;
+  b.textContent = "…";
+  try {
+    const r = await api("/api/packs/add", { id: p.id });
+    Object.assign(p, { installed: true, new: 0 });
+    renderLibrary();
+    afterPackIn(r);
+  } catch (e) { toast(e.message); renderLibrary(); }
+}
+function packSummary(r) {
+  if (r.created) return `انضافت «${r.title}» بـ${r.added} اسم${r.fixes ? ` و${r.fixes} سطر مترجم` : ""} ✓`;
+  const parts = [];
+  if (r.added) parts.push(`${r.added} اسم جديد`);
+  if (r.fixes) parts.push(`${r.fixes} سطر مترجم`);
+  if (r.updated) parts.push(`وتعدّلت كتابة ${r.updated}`);
+  let msg = parts.length ? `انضاف ${parts.join(" و")} ✓` : "كل اللي في الملف موجود عندك ✓";
+  if (r.kept) msg += ` · ${r.kept} خلّيتها مثل ما كتبتها`;
+  return msg;
+}
+function afterPackIn(r) {
+  toast(packSummary(r));
+  S.profiles = r.profiles;
+  fillGames();
+  selectGame(r.name);
+}
+$$(".lib-open").forEach(b => b.addEventListener("click", openLibrary));
+$("#lib-close").addEventListener("click", () => $("#dlg-library").close());
+$("#lib-find").addEventListener("input", renderLibrary);
+
+$("#pack-export").addEventListener("click", async () => {
+  const name = S.profile?.name || $("#game2").value || "default";
+  let r;
+  try { r = await api(`/api/pack/export?name=${encodeURIComponent(name)}`); } catch (e) { return toast(e.message); }
+  const text = JSON.stringify(r.pack, null, 1);
+  if (window.TarjimApp?.shareFile) {  // the phone app: Android's share sheet (WhatsApp, Files, ...)
+    TarjimApp.shareFile(r.file, text);
+    return;
+  }
+  const a = el("a");
+  a.href = URL.createObjectURL(new Blob([text], { type: "application/json" }));
+  a.download = r.file;
+  document.body.append(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+  toast(`انحفظ «${r.file}» في التنزيلات ✓`);
+});
+$("#pack-import").addEventListener("click", () => { $("#pack-file").value = ""; $("#pack-file").click(); });
+$("#pack-file").addEventListener("change", async e => {
+  const file = e.target.files[0];
+  if (!file) return;
+  if (file.size > 8_000_000) return toast("الملف كبير مرة، وملفات ترجِم ما توصل لهالحجم.");
+  let pack;
+  try { pack = JSON.parse(await file.text()); } catch { pack = null; }
+  if (!pack || pack.tarjim !== "tarjim-game") return toast("هذا مو ملف لعبة من ترجِم.");
+  openImport(pack);
+});
+// The phone app hands over a file opened from WhatsApp or Files ("Open with ترجِم").
+window.onPackFile = async text => {
+  await booted;  // the list of games must be there before asking where the file goes
+  let pack;
+  try { pack = JSON.parse(text); } catch { pack = null; }
+  if (!pack || pack.tarjim !== "tarjim-game") return toast("هذا مو ملف لعبة من ترجِم.");
+  openImport(pack);
+};
+function openImport(pack) {
+  const names = (pack.names || []).length, fixes = (pack.fixes || []).length;
+  $("#imp-title").textContent = pack.title || pack.id || "لعبة";
+  $("#imp-sub").textContent = [`${names} اسم`, fixes ? `${fixes} سطر مترجم` : "", pack.made ? `من ${pack.made}` : ""]
+    .filter(Boolean).join(" · ");
+  const own = S.profiles.find(p => p.name === pack.id);
+  const opts = own ? [] : [[pack.id || "", `لعبة جديدة: ${pack.title || pack.id}`]];
+  for (const p of S.profiles) opts.push([p.name, p.title]);
+  const sel = $("#imp-into");
+  sel.replaceChildren(...opts.map(([v, t]) => { const o = el("option", "", t); o.value = v; return o; }));
+  sel.value = own ? own.name : pack.id || "";
+  const d = $("#dlg-import");
+  d.returnValue = "cancel";
+  d.addEventListener("close", async () => {
+    if (d.returnValue !== "ok") return;
+    try { afterPackIn(await api("/api/pack/import", { pack, into: sel.value })); } catch (err) { toast(err.message); }
+  }, { once: true });
+  d.showModal();
 }
 function nameRow(row, collect) {
   const r = el("div", "name");
@@ -1120,7 +1271,9 @@ async function boot() {
   if (S.still) {
     await runCheck();
     if (q.get("step")) S.guideStep = Number(q.get("step"));
+    if (q.get("game")) selectGame(q.get("game"));
     if (q.get("view")) go(q.get("view"));
+    if (q.has("library")) openLibrary();
     if (q.has("demo")) {
       S.live = { state: "running", step: "", error: "", started_at: Date.now() / 1000 + S.skew - 754 };
       renderLive();
@@ -1139,7 +1292,7 @@ async function boot() {
   runCheck();
   setInterval(() => { if (S.live.state === "idle" && document.visibilityState === "visible") runCheck(); }, 20000);
 }
-boot().catch(e => {
+const booted = boot().catch(e => {
   document.body.classList.remove("booting");
   $("#alert").hidden = false;
   $("#alert").textContent = e.message;

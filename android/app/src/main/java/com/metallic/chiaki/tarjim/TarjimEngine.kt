@@ -634,18 +634,28 @@ class TarjimEngine(private val context: Context, private val connectInfo: Connec
 
 		fun translate(english: String, lk: Look): String
 		{
-			val matched = lk.glossary.entries.filter { rx(it.key).containsMatchIn(english) }.sortedByDescending { it.key.length }
+			// The game's names in this line, longest first. A name found only inside a longer one
+			// ("Arthur" in "Arthur Morgan") is part of that one and does not count.
+			val matched = ArrayList<Triple<String, String, Regex>>()
+			val masked = StringBuilder(english)
+			for(name in lk.names)
+			{
+				val hits = name.third.findAll(masked).toList()
+				if(hits.isEmpty()) continue
+				matched.add(name)
+				for(hit in hits) for(i in hit.range) masked.setCharAt(i, '\u0000')
+			}
 			var source = english
 			val swaps = ArrayList<Pair<String, String>>()
 			val freeMale = male.filter { !rx(it.first).containsMatchIn(english) }.toMutableList()
 			val freeFemale = female.filter { !rx(it.first).containsMatchIn(english) }.toMutableList()
-			for(entry in matched)
+			for((en, ar, pattern) in matched)
 			{
-				val pool = if(entry.key in lk.female && freeFemale.isNotEmpty()) freeFemale else freeMale
-				if(pool.isEmpty() || !rx(entry.key).containsMatchIn(source)) continue  // already inside a longer name
+				val pool = if(en in lk.female && freeFemale.isNotEmpty()) freeFemale else freeMale
+				if(pool.isEmpty() || !pattern.containsMatchIn(source)) continue
 				val standIn = pool.removeAt(0)
-				source = rx(entry.key).replace(source, standIn.first)
-				swaps.add(Pair(standIn.second, entry.value))
+				source = pattern.replace(source, Regex.escapeReplacement(standIn.first))
+				swaps.add(Pair(standIn.second, ar))
 			}
 			var arabic = raw(source)
 			if(swaps.isNotEmpty() && swaps.all { arabic.contains(it.first) })
@@ -653,7 +663,7 @@ class TarjimEngine(private val context: Context, private val connectInfo: Connec
 			else if(swaps.isNotEmpty())
 				arabic = raw(english)  // a stand-in got lost: plain translation
 			// names the translator left in Latin letters
-			for(entry in matched) arabic = rx(entry.key).replace(arabic, entry.value)
+			for((_, ar, pattern) in matched) arabic = pattern.replace(arabic, Regex.escapeReplacement(ar))
 			return clean(arabic)
 		}
 

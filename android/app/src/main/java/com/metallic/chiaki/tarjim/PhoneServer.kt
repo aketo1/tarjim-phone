@@ -32,6 +32,7 @@ import java.util.concurrent.TimeUnit
 class PhoneServer private constructor(private val context: Context)
 {
 	val store = Store(context)
+	private val packs = Packs(context, store)
 	val xbox = XboxAuth(store)
 	private val server = ServerSocket(0, 16, InetAddress.getByName("127.0.0.1"))
 	val url get() = "http://127.0.0.1:${server.localPort}/"
@@ -227,6 +228,18 @@ class PhoneServer private constructor(private val context: Context)
 
 	private fun error(message: String) = JSONObject().put("error", message)
 
+	/** A game from the bundled library, or a game file the user picked, into a profile. */
+	private fun packIn(path: String, body: JSONObject): JSONObject
+	{
+		val pack = try { if(path == "/api/packs/add") packs.libraryPack(body.optString("id")) else packs.parse(body.optJSONObject("pack")) }
+			catch(e: Packs.PackError) { return error(e.message ?: "هذا مو ملف لعبة من ترجِم.") }
+		val result = packs.merge(pack, body.optString("into").ifEmpty { null })
+		if(TarjimService.profile == result.optString("name")) TarjimService.engine?.reload()  // the running game gets its new names at once
+		val profiles = JSONArray()
+		for((name, title) in store.profiles()) profiles.put(JSONObject().put("name", name).put("title", title))
+		return result.put("profiles", profiles)
+	}
+
 	private fun route(method: String, path: String, query: Map<String, String>, body: JSONObject): Any?
 	{
 		if(method == "GET") return when(path)
@@ -245,6 +258,12 @@ class PhoneServer private constructor(private val context: Context)
 			"/api/xbox" -> xboxView()
 			"/api/xbox/consoles" -> JSONObject().put("consoles", xbox.consoles())
 			"/api/profile" -> profileView(query["name"] ?: "default")
+			"/api/packs" -> JSONObject().put("packs", packs.libraryView())
+			"/api/pack/export" ->
+			{
+				val pack = packs.export(query["name"] ?: "default")
+				JSONObject().put("pack", pack).put("file", Packs.fileName(pack))
+			}
 			"/api/setup" -> JSONObject().put("tv", store.tv).put("console", store.console).put("consoles", checkJson().getJSONArray("consoles"))
 				.put("account", store.accountName.ifEmpty { if(store.account.isNotEmpty()) "محفوظ" else "" })
 			"/api/frame" -> TarjimService.engine?.frameJpeg() ?: return null
@@ -279,6 +298,7 @@ class PhoneServer private constructor(private val context: Context)
 			"/api/xbox/forget" -> { xbox.forget(); xboxView() }
 			"/api/xbox/state" -> { TarjimService.engine?.xboxState(body.optString("state"), body.optString("error")); JSONObject().put("ok", true) }
 			"/api/profile" -> profileSave(body)
+			"/api/packs/add", "/api/pack/import" -> packIn(path, body)
 			"/api/profile/new" -> profileView(store.create(body.optString("title").trim().take(60)))
 			"/api/setup" ->
 			{
@@ -328,7 +348,7 @@ class PhoneServer private constructor(private val context: Context)
 		val target = request[1]
 		var length = 0
 		for(line in lines.drop(1)) if(line.startsWith("content-length:", true)) length = line.substringAfter(":").trim().toIntOrNull() ?: 0
-		val raw = ByteArray(length.coerceIn(0, 3_000_000))
+		val raw = ByteArray(length.coerceIn(0, 8_000_000))  // a game file with many line fixes can be a few megabytes
 		var read = 0
 		while(read < raw.size) { val n = input.read(raw, read, raw.size - read); if(n < 0) break; read += n }
 		val path = target.substringBefore("?")

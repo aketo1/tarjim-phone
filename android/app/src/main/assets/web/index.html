@@ -44,10 +44,15 @@
         <h1 id="home-title">جاهز متى ما أنت جاهز</h1>
         <p class="sub" id="home-sub">اختر اللعبة واضغط «ابدأ». الباقي علينا.</p>
       </div>
-      <label class="picker" title="اللعبة">
-        <svg viewBox="0 0 24 24"><path d="M7 8h10a5 5 0 0 1 4.9 6l-.5 2.6a2.4 2.4 0 0 1-4.3 1L15.5 16h-7l-1.6 1.6a2.4 2.4 0 0 1-4.3-1L2.1 14A5 5 0 0 1 7 8z"/><path d="M8 11v3M6.5 12.5h3M16 12h.01M18 13.5h.01"/></svg>
-        <select id="game" aria-label="اللعبة"></select>
-      </label>
+      <div class="row">
+        <label class="picker" title="اللعبة">
+          <svg viewBox="0 0 24 24"><path d="M7 8h10a5 5 0 0 1 4.9 6l-.5 2.6a2.4 2.4 0 0 1-4.3 1L15.5 16h-7l-1.6 1.6a2.4 2.4 0 0 1-4.3-1L2.1 14A5 5 0 0 1 7 8z"/><path d="M8 11v3M6.5 12.5h3M16 12h.01M18 13.5h.01"/></svg>
+          <select id="game" aria-label="اللعبة"></select>
+        </label>
+        <button class="btn soft lib-open" title="قوائم أسماء جاهزة لألعاب ما فيها عربي">
+          <svg viewBox="0 0 24 24"><path d="M5 19.5V5.5A1.5 1.5 0 0 1 6.5 4H9v15.5M9 4h3.5v15.5"/><path d="m14.6 5.3 3-.8 3.3 14.4-3 .8z"/><path d="M3.5 19.5h17"/></svg>مكتبة الألعاب
+        </button>
+      </div>
     </header>
 
     <div class="hero" id="stage" data-state="idle">
@@ -127,6 +132,9 @@
           <select id="game2" aria-label="اللعبة"></select>
         </label>
         <button class="btn soft" id="new-game">+ لعبة</button>
+        <button class="btn soft lib-open" title="قوائم أسماء جاهزة لألعاب ما فيها عربي">
+          <svg viewBox="0 0 24 24"><path d="M5 19.5V5.5A1.5 1.5 0 0 1 6.5 4H9v15.5M9 4h3.5v15.5"/><path d="m14.6 5.3 3-.8 3.3 14.4-3 .8z"/><path d="M3.5 19.5h17"/></svg>المكتبة
+        </button>
       </div>
     </header>
 
@@ -220,11 +228,25 @@
 
       <div class="card glossary">
         <div class="card-head">
-          <div><h3>قاموس الأسماء</h3>
+          <div><h3>قاموس الأسماء <span class="count" id="names-count"></span></h3>
           <p class="muted">الاسم مثل ما يطلع بالإنجليزي، وكيف تبيه بالعربي. يثبت في كل السطور حتى لو المترجم فهمه كلمة عادية. علّم ♀ لأسماء النساء عشان تطلع الأفعال مؤنثة.</p></div>
-          <button class="btn soft" id="add-name">+ اسم</button>
+          <div class="row wrap">
+            <button class="btn soft" id="pack-export" title="ملف فيه أسماء اللعبة وترجماتك ومكان الترجمة، تحفظه أو ترسله لغيرك">
+              <svg viewBox="0 0 24 24"><path d="M12 4v11M7.5 11 12 15.5 16.5 11M5 20h14"/></svg>صدّر ملف
+            </button>
+            <button class="btn soft" id="pack-import" title="ملف لعبة من ترجِم: من صديق، أو من جهازك الثاني">
+              <svg viewBox="0 0 24 24"><path d="M12 16V5M7.5 9.5 12 5l4.5 4.5M5 20h14"/></svg>استورد ملف
+            </button>
+            <button class="btn soft" id="add-name">+ اسم</button>
+          </div>
         </div>
+        <label class="names-find" id="names-find-box" hidden>
+          <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4 4"/></svg>
+          <input id="names-find" placeholder="ابحث في الأسماء: بالإنجليزي أو بالعربي" aria-label="ابحث في الأسماء">
+        </label>
         <div id="names"></div>
+        <p class="muted names-none" id="names-none" hidden>ما فيه اسم بهالبحث.</p>
+        <input type="file" id="pack-file" accept=".json,application/json,text/plain" hidden>
       </div>
     </div>
   </section>
@@ -362,6 +384,37 @@
     <div class="row end">
       <button class="btn soft" value="cancel">إلغاء</button>
       <button class="btn" value="ok">أضف</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="dlg-library" class="wide" aria-labelledby="lib-h">
+  <div class="lib" tabindex="-1">
+    <header class="lib-head">
+      <div>
+        <h3 id="lib-h">مكتبة الألعاب</h3>
+        <p class="muted">قوائم أسماء جاهزة لألعاب ما فيها عربي: الشخصيات والأماكن والعصابات مكتوبة صح، والأسماء النسائية معلّمة. اختر لعبتك وتنضاف بضغطة، وتقدر تعدّل أي اسم بعدها.</p>
+      </div>
+      <button class="x" id="lib-close" aria-label="إغلاق">×</button>
+    </header>
+    <label class="names-find">
+      <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4 4"/></svg>
+      <input id="lib-find" placeholder="ابحث: ريد ديد، GTA، ياكوزا، برسونا…" aria-label="ابحث في المكتبة">
+    </label>
+    <div class="lib-grid" id="lib-grid"></div>
+  </div>
+</dialog>
+
+<dialog id="dlg-import">
+  <form method="dialog" class="dlg">
+    <h3>استيراد ملف لعبة</h3>
+    <div class="imp-card"><b id="imp-title" dir="auto"></b><span class="muted" id="imp-sub"></span></div>
+    <label class="field-head" for="imp-into"><b>تنضاف إلى</b></label>
+    <select class="text" id="imp-into"></select>
+    <p class="muted">الأسماء والسطور الجديدة تنضاف، واللي كتبته أنت يبقى مثل ما هو.</p>
+    <div class="row end">
+      <button class="btn soft" value="cancel">إلغاء</button>
+      <button class="btn" value="ok">استورد</button>
     </div>
   </form>
 </dialog>
