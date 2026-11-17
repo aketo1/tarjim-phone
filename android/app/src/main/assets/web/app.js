@@ -31,7 +31,7 @@ async function api(path, body) {
   };
   if (TOKEN) opt.headers["X-Tarjim-Token"] = TOKEN;
   let res;
-  try { res = await fetch(path, opt); } catch { throw new Error("ما قدرت أوصل لترجِم. تأكد إن البرنامج شغّال على اللابتوب."); }
+  try { res = await fetch(path, opt); } catch { throw new Error(S.app ? "ما قدرت أوصل لترجِم. قفّل التطبيق وافتحه من جديد." : "ما قدرت أوصل لترجِم. تأكد إن البرنامج شغّال على اللابتوب."); }
   if (res.status === 403 && S.remote) { needPairing(); throw new Error("الجوال مو مربوط."); }
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(data.error || "صار خطأ غير متوقع.");
@@ -184,7 +184,7 @@ function renderStatus() {
   const { state } = S.live;
   let cls = "wait", text = "أفحص الأجهزة…";
   if (state === "running") { cls = "ok"; text = "الترجمة شغّالة على التلفزيون"; }
-  else if (state === "starting") text = STEP_TEXT[S.live.step] || "نجهّز كل شي…";
+  else if (state === "starting") text = STEP_TEXT[S.live.step] || "أجهّز كل شي…";
   else if (state === "stopping") text = "أوقّف وأمسح الشاشة…";
   else {
     const nodes = ["ps5", "pc", "tv"].map(id => S.nodes[id]).filter(Boolean);
@@ -380,7 +380,7 @@ function renderMeta(name) {
   const s = S.summary[name];
   const chips = [];
   if (s) {
-    chips.push(s.names ? `${s.names} اسم` : "بدون قاموس أسماء");
+    chips.push(s.names ? `${s.names} اسم` : "بدون أسماء");
     const f = FONTS.find(x => x.id === s.font);
     if (f) chips.push(`خط ${f.name}`);
     if (BG_TEXT[s.background]) chips.push(BG_TEXT[s.background]);
@@ -824,7 +824,7 @@ function libCard(p) {
   if (!p.installed) b = el("button", "btn small", "أضف");
   else if (p.new > 0) b = el("button", "btn small", `حدّث +${p.new}`);
   else { b = el("button", "btn soft small done", "مضافة ✓"); b.disabled = true; }
-  b.title = !p.installed ? "تنضاف كلعبة جديدة بقاموسها" : p.new > 0 ? "أسماء جديدة تنضاف لقاموسك، واللي كتبته أنت يبقى" : "";
+  b.title = !p.installed ? "تنضاف كلعبة جديدة بأسمائها" : p.new > 0 ? "أسماء جديدة تنضاف للعبتك، واللي كتبته أنت يبقى" : "";
   b.addEventListener("click", () => addFromLibrary(p, b));
   foot.append(chips, b);
   card.append(poster, el("div", "lib-top", [p.series, p.year].filter(Boolean).join(" · ")), title,
@@ -968,7 +968,7 @@ async function loadPhone() {
       img.src = `/api/phone/qr.svg?t=${Date.now()}`;
       qr.replaceChildren(img);
     } else {
-      qr.replaceChildren(el("span", "muted", "اللابتوب مو على شبكة"));
+      qr.replaceChildren(el("span", "muted", "اللابتوب مو متصل بالشبكة"));
     }
     $("#phone-url").textContent = v.url ? v.url.replace("http://", "") : "اللابتوب مو متصل بالشبكة";
     $("#phone-pin").textContent = v.pin;
@@ -1221,16 +1221,16 @@ function renderGuide() {
       <div class="tips">
         <div><b>شبّك الشاحن</b><p>على البطارية ويندوز يبطّئ المعالج والترجمة تتأخر.</p></div>
         <div><b>العب بحسابك العادي</b><p>الحساب الثاني للنسخة بس. لا تدخل اللعبة فيه.</p></div>
-        <div><b>أضف أسماء الشخصيات</b><p>من «الأسماء»، عشان تنكتب صح دايماً.</p></div>
-        <div><b>ترجمة ما عجبتك؟</b><p>في الرئيسية اضغط القلم جنب السطر واكتبها بطريقتك. تنحفظ للمرة الجاية.</p></div>
-        <div><b>الترجمة تطلع قبل اكتمال السطر؟</b><p>فعّل «اللعبة تكتب النص حرف حرف» في المظهر ‹ التوقيت.</p></div>
+        <div><b>أضف أسماء الشخصيات</b><p>من «الأسماء»، عشان تنكتب صح دائماً.</p></div>
+        <div><b>ترجمة ما عجبتك؟</b><p>في «الرئيسية» اضغط القلم جنب السطر واكتبها بطريقتك. تنحفظ للمرة الجاية.</p></div>
+        <div><b>الترجمة تطلع قبل اكتمال السطر؟</b><p>فعّل «اللعبة تكتب النص حرف حرف» في «المظهر» ‹ «التوقيت».</p></div>
         <div><b>تبي تشيل ترجِم من التلفزيون؟</b><p>يحذف التطبيق ويرجّع إعدادات التلفزيون مثل ما كانت.</p>
           <button class="textbtn" id="tv-revert">شيله من التلفزيون</button></div>
       </div>
       <button class="btn" data-goto="home">${ready ? "يلا نبدأ" : "للرئيسية"}</button>`;
     view.append(logBox("rv-log"));
     $("#tv-revert", view).addEventListener("click", async () => {
-      if (!await ask("تشيل ترجِم من التلفزيون؟", "ينحذف التطبيق من التلفزيون وترجع إعداداته مثل ما كانت. تقدر تجهّزه من جديد من الدليل.", "شيله")) return;
+      if (!await ask("تشيل ترجِم من التلفزيون؟", "ينحذف التطبيق من التلفزيون وترجع إعداداته مثل ما كانت. تقدر تجهّزه من جديد من «الدليل».", "شيله")) return;
       $("#rv-log").replaceChildren();
       try { await api("/api/tv/revert", {}); } catch (err) { toast(err.message); }
     });

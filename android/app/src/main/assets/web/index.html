@@ -85,8 +85,8 @@
           <svg class="ic-stop" viewBox="0 0 24 24"><rect x="6.5" y="6.5" width="11" height="11" rx="3"/></svg>
           <span class="play-t"><b id="orb-title">ابدأ الترجمة</b><small id="orb-step"></small></span>
         </button>
-        <button class="pill glass to-look" data-goto="look" title="مظهر الترجمة"><svg viewBox="0 0 24 24"><path d="M5 19 10.5 5h3L19 19M7.6 13.5h8.8"/></svg><span>المظهر</span></button>
-        <button class="pill glass to-names" data-goto="names" title="قاموس الأسماء"><svg viewBox="0 0 24 24"><circle cx="9" cy="8.5" r="3.5"/><path d="M3 19.5a6 6 0 0 1 12 0M16 5.5a3.5 3.5 0 0 1 0 6.5"/></svg><span>الأسماء</span></button>
+        <button class="pill glass to-look" data-goto="look" title="المظهر"><svg viewBox="0 0 24 24"><path d="M5 19 10.5 5h3L19 19M7.6 13.5h8.8"/></svg><span>المظهر</span></button>
+        <button class="pill glass to-names" data-goto="names" title="الأسماء"><svg viewBox="0 0 24 24"><circle cx="9" cy="8.5" r="3.5"/><path d="M3 19.5a6 6 0 0 1 12 0M16 5.5a3.5 3.5 0 0 1 0 6.5"/></svg><span>الأسماء</span></button>
         <button class="pill glass lib-open to-lib" title="قوائم أسماء جاهزة لألعاب ما فيها عربي"><svg viewBox="0 0 24 24"><path d="M5 19.5v-14A1.5 1.5 0 0 1 6.5 4H9v15.5M9 4h3.5v15.5"/><path d="m14.6 5.3 3-.8 3.3 14.4-3 .8z"/></svg><span>المكتبة</span></button>
       </div>
       <div class="progress" id="progress" aria-hidden="true"><i></i><i></i><i></i></div>
@@ -101,7 +101,7 @@
       <div class="nums">
         <div class="num wide"><small>السرعة</small><b id="s-ms">—</b>
           <svg id="spark" viewBox="0 0 200 40" preserveAspectRatio="none" aria-hidden="true"><path class="area" d=""/><path class="line" d=""/></svg></div>
-        <div class="num"><small>سطور</small><b id="s-lines">0</b></div>
+        <div class="num"><small>السطور</small><b id="s-lines">0</b></div>
         <div class="num"><small>صورة/ث</small><b id="s-fps">—</b></div>
       </div>
       <ol id="feed"><li class="empty">أول ما تتكلم الشخصيات في اللعبة، السطور تطلع هنا. وتقدر تعدّل أي ترجمة ما عجبتك وتنحفظ للمرة الجاية.</li></ol>
@@ -132,7 +132,7 @@
   <section class="view" id="view-look">
     <header class="page-head">
       <div>
-        <h1>مظهر الترجمة</h1>
+        <h1>المظهر</h1>
         <p class="sub">كل تغيير ينحفظ لحاله، ولو الترجمة شغّالة يتطبّق على التلفزيون فوراً.</p>
       </div>
       <div class="row">
@@ -141,7 +141,7 @@
           <select id="game2" class="game-select" aria-label="اللعبة"></select>
           <svg class="chev" viewBox="0 0 24 24"><path d="m7 10 5 5 5-5"/></svg>
         </label>
-        <button class="pill glass" id="new-game"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg><span>لعبة</span></button>
+        <button class="pill glass" id="new-game" title="أضف لعبة"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg><span>لعبة</span></button>
       </div>
     </header>
 
@@ -197,7 +197,7 @@
         <div class="card-head"><h3>الخط</h3><span id="size-val" class="chip"></span></div>
         <div class="fonts" id="fonts"></div>
         <div class="field">
-          <label class="switch"><input type="checkbox" id="size-auto"><i></i><span>حجم تلقائي <small>يقيس خط اللعبة مرة ويثبّته</small></span></label>
+          <label class="switch"><input type="checkbox" id="size-auto"><i></i><span>حجم تلقائي <small>يقيس خط اللعبة مرة ويثبّته.</small></span></label>
           <input type="range" id="size" min="22" max="70" step="1">
         </div>
         <div class="card-head sub-head"><h3>التوقيت</h3></div>
@@ -213,7 +213,7 @@
       <div class="card region">
         <div class="card-head">
           <div><h3>وين يقرأ البرنامج؟</h3>
-          <p class="muted">اسحب الإطار فوق المكان اللي تطلع فيه ترجمة اللعبة. اللي برّاه ما ينقرأ، فما يلقط القوايم والعدّادات.</p></div>
+          <p class="muted">اسحب الإطار فوق المكان اللي تطلع فيه ترجمة اللعبة. اللي برّاه ما ينقرأ، فما يلقط القوائم والعدّادات.</p></div>
           <div class="row">
             <button class="pill glass" id="region-shot"><svg viewBox="0 0 24 24"><path d="M19.5 12a7.5 7.5 0 1 1-2.2-5.3M19.5 4.5v4h-4"/></svg><span>حدّث الصورة</span></button>
             <button class="pill glass" id="region-reset"><span>الافتراضي</span></button>
@@ -235,7 +235,7 @@
   <section class="view" id="view-names">
     <header class="page-head">
       <div>
-        <h1>قاموس الأسماء <span class="count" id="names-count"></span></h1>
+        <h1>الأسماء <span class="count" id="names-count"></span></h1>
         <p class="sub">الاسم مثل ما يطلع بالإنجليزي، وكيف تبيه بالعربي. يثبت في كل السطور حتى لو المترجم فهمه كلمة عادية. علّم ♀ لأسماء النساء عشان تطلع الأفعال مؤنثة.</p>
       </div>
       <div class="row">
@@ -263,7 +263,7 @@
           <button class="pill glass" id="pack-import" title="ملف لعبة من ترجِم: من صديق، أو من جهازك الثاني">
             <svg viewBox="0 0 24 24"><path d="M12 16V5M7.5 9.5 12 5l4.5 4.5M5 20h14"/></svg><span>استورد ملف</span>
           </button>
-          <button class="btn" id="add-name"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>اسم</button>
+          <button class="btn" id="add-name" title="أضف اسم"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>اسم</button>
         </div>
       </div>
       <div id="names"></div>
@@ -293,7 +293,7 @@
       <div class="card">
         <div class="card-head"><h3>التلفزيون</h3><span class="muted" id="su-tv-state"></span></div>
         <input class="text ltr" id="su-tv" placeholder="192.168.1.50" inputmode="decimal" maxlength="15" aria-label="عنوان التلفزيون">
-        <p class="muted">افتح تطبيق «ترجِم» على التلفزيون وتلقى العنوان مكتوب بالأصفر. لو التطبيق مو على التلفزيون، يتثبّت مرة وحدة من نسخة الكمبيوتر.</p>
+        <p class="muted">افتح تطبيق «ترجِم» على التلفزيون وتلقى العنوان مكتوب بالأصفر. لو التطبيق مو على التلفزيون، يتثبّت مرة وحدة من ترجِم على اللابتوب.</p>
       </div>
       <div class="card" id="su-xbox" hidden></div>
       <div class="card" id="su-ps5card">
@@ -315,7 +315,7 @@
         <div class="card-head"><h3>عشان ما يتأخر ولا يفصل</h3></div>
         <ol class="todo">
           <li><div><b>شبّك الشاحن.</b> الترجمة شغل متواصل.</div></li>
-          <li><div><b>لا تقفل شاشة الجوال.</b> أندرويد يبطّئ التطبيق لو انطفت الشاشة (الترجمة تتأخر ثانية ونص ثم يفصل). استخدم زر «عتّم الشاشة» في الرئيسية: الشاشة تصير سوداء وما تستهلك شي تقريباً.</div></li>
+          <li><div><b>لا تقفل شاشة الجوال.</b> أندرويد يبطّئ التطبيق لو انطفت الشاشة (الترجمة تتأخر ثانية ونص ثم يفصل). استخدم زر «عتّم الشاشة» في «الرئيسية»: الشاشة تصير سوداء وما تستهلك شي تقريباً.</div></li>
           <li><div><b>اسمح له يشتغل بدون قيود.</b> <span id="su-batt-state" class="muted"></span>
             <div class="action"><button class="btn soft" id="su-batt">اسمح</button></div></div></li>
         </ol>
@@ -327,8 +327,8 @@
   <section class="view" id="view-phone">
     <header class="page-head">
       <div>
-        <h1>تحكّم من جوالك</h1>
-        <p class="sub">شغّل ووقّف الترجمة وغيّر شكلها من الكنبة، والجوال يصير شاشة ثانية للترجمة.</p>
+        <h1>الجوال</h1>
+        <p class="sub">شغّل ووقّف الترجمة وغيّر المظهر من الكنبة، والجوال يصير شاشة ثانية للترجمة.</p>
       </div>
     </header>
     <div class="phone-grid">
@@ -402,7 +402,7 @@
 <dialog id="dlg-games" class="wide" aria-labelledby="games-h">
   <div class="sheet" tabindex="-1">
     <header class="sheet-head">
-      <div><h3 id="games-h">ألعابي</h3><p class="muted">اختر اللعبة اللي بتلعبها. كل لعبة لها شكل ترجمتها وقاموس أسمائها.</p></div>
+      <div><h3 id="games-h">ألعابي</h3><p class="muted">اختر اللعبة اللي بتلعبها. كل لعبة لها مظهرها وأسماؤها.</p></div>
       <button class="x" data-close aria-label="إغلاق"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
     </header>
     <div class="covers" id="games-grid"></div>
@@ -412,7 +412,7 @@
 <dialog id="dlg-new">
   <form method="dialog" class="dlg">
     <h3>لعبة جديدة</h3>
-    <p class="muted">اكتب اسم اللعبة بالإنجليزي. كل لعبة لها شكلها وقاموس أسمائها، ولو هي من ألعاب المكتبة تطلع صورتها.</p>
+    <p class="muted">اكتب اسم اللعبة بالإنجليزي. كل لعبة لها مظهرها وأسماؤها، ولو هي من ألعاب المكتبة تطلع صورتها.</p>
     <input class="text" id="new-title" placeholder="مثال: Silent Hill 2" dir="auto" maxlength="60">
     <div class="row end">
       <button class="btn soft" value="cancel">إلغاء</button>
@@ -425,7 +425,7 @@
   <div class="sheet lib" tabindex="-1">
     <header class="sheet-head">
       <div>
-        <h3 id="lib-h">مكتبة الألعاب</h3>
+        <h3 id="lib-h">المكتبة</h3>
         <p class="muted">قوائم أسماء جاهزة لألعاب ما فيها عربي: الشخصيات والأماكن والعصابات مكتوبة صح، والأسماء النسائية معلّمة. اختر لعبتك وتنضاف بضغطة، وتقدر تعدّل أي اسم بعدها.</p>
       </div>
       <button class="x" id="lib-close" aria-label="إغلاق"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button>

@@ -223,6 +223,9 @@ state: written from the laptop library's request shapes, never run.
 - Talk to the user in simple Saudi Arabic; code and commits in English.
 - The page (`assets/web`) is a copy of the laptop program's: change it there
   and copy it with its `launcher/sync_phone_web.py` (sections 12 and 13).
+- The translation rules exist twice: here (`TarjimEngine.kt`, `Gender.kt`) and in the
+  laptop program (`translate.py`, `gender.py`). Change both and keep `GenderTest.kt` and the
+  laptop's `test_gender.py` alike (section 14).
 
 ## 11. Game files, the game library, and names (added 2026-11-17)
 
@@ -334,3 +337,23 @@ the page, `look.js`, `art.js` and all 111 pictures inside, and without
 `glass.js`. The page was clicked through in Chrome at phone width.
 **Not verified:** nothing ran on the phone (not connected): the look in the
 S20 FE's WebView, the live picture there, and the cost of both on the phone.
+
+## 14. Arabic wording and the translation rules (added 2026-11-18)
+
+Done with the laptop program (its report, section 20, has the measurements). Here:
+
+- **Wording**: one name per feature in the shared page; this app's own messages (errors,
+  the PS5 link screen, settings, `res/values/strings.xml`) in plain Arabic.
+- **Translation rules** in `TarjimEngine.kt`: more than 250 idioms, phrasal verbs and set
+  phrases are put into plain English before ML Kit translates; the Arabic clean-up of the
+  laptop program.
+- **Commands in the right gender** (`Gender.kt`, new): the laptop's `gender.py` in Kotlin,
+  the same lists. A man's name or nobody named: masculine commands (this app used to fix
+  them only when no name at all was in the line); a woman's name: feminine.
+- **Tests**: `app/src/test/.../GenderTest.kt` holds the same cases as the laptop's
+  `test_gender.py` and passes (`gradlew -PtarjimPrebuilt :app:testDebugUnitTest --tests
+  "com.metallic.chiaki.tarjim.GenderTest"`).
+
+**Verified:** the app builds; the gender unit test passes on the computer.
+**Not verified:** anything on the phone. ML Kit's mistakes differ from the laptop model's,
+so how much these rules help here was not measured.

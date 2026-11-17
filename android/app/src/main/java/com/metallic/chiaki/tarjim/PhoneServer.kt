@@ -117,7 +117,7 @@ class PhoneServer private constructor(private val context: Context)
 		val chosen = store.xboxId.isNotEmpty()
 		fun item(id: String, ok: Boolean, title: String, hint: String) = JSONObject().put("id", id).put("ok", ok).put("title", title).put("hint", hint)
 		val items = JSONArray()
-			.put(item("power", charging(), "الجوال على الشاحن", "شبّك الشاحن: الترجمة شغل متواصل وتاكل بطارية."))
+			.put(item("power", charging(), "الجوال على الشاحن", "شبّك الشاحن: الترجمة شغل متواصل وتصرف بطارية."))
 			.put(item("models", !on || s.translatorOk, "المترجم جاهز", s.translator))
 			.put(item("tv", if(on) s.tvOk else tvSet, "التلفزيون", if(!tvSet) "اكتب عنوان التلفزيون في «الإعداد»." else s.tv))
 			.put(item("ps5", if(on) s.consoleOk else chosen, "الإكس بوكس", if(!chosen) "اختر الإكس بوكس من «الإعداد»." else s.console))
@@ -141,7 +141,7 @@ class PhoneServer private constructor(private val context: Context)
 		val consoleSet = address.matches(store.console)
 		fun item(id: String, ok: Boolean, title: String, hint: String) = JSONObject().put("id", id).put("ok", ok).put("title", title).put("hint", hint)
 		val items = JSONArray()
-			.put(item("power", charging(), "الجوال على الشاحن", "شبّك الشاحن: الترجمة شغل متواصل وتاكل بطارية."))
+			.put(item("power", charging(), "الجوال على الشاحن", "شبّك الشاحن: الترجمة شغل متواصل وتصرف بطارية."))
 			.put(item("models", !on || s.translatorOk, "المترجم جاهز", s.translator))
 			.put(item("tv", if(on) s.tvOk else tvSet, "التلفزيون", if(!tvSet) "اكتب عنوان التلفزيون في «الإعداد»." else s.tv))
 			.put(item("ps5", if(on) s.consoleOk else consoleSet, "الـPS5", if(!consoleSet) "اكتب عنوان الـPS5 في «الإعداد»." else s.console))
@@ -315,7 +315,7 @@ class PhoneServer private constructor(private val context: Context)
 			}
 			"/api/tv/try" ->
 			{
-				val engine = TarjimService.engine ?: return error("شغّل الترجمة أول، وبعدها جرّب الشكل على التلفزيون.")
+				val engine = TarjimService.engine ?: return error("شغّل الترجمة أول، وبعدها جرّب المظهر على التلفزيون.")
 				engine.reload()
 				engine.tryOnTv(body.optString("text").ifBlank { "يجب أن نغادر قبل وصول العاصفة." })
 				JSONObject().put("started", true)
@@ -323,6 +323,18 @@ class PhoneServer private constructor(private val context: Context)
 			"/api/guide-seen" -> JSONObject().put("ok", true)
 			else -> null
 		}
+	}
+
+	private fun friendlyError(e: Exception): String
+	{
+		val text = e.message ?: ""
+		val low = text.lowercase()
+		if("not linked to a microsoft account" in low)
+			return "الجوال مو مربوط بحساب الإكس بوكس. افتح «الإعداد» واربط حساب مايكروسوفت."
+		if("xbox" in low || "microsoft" in low || "answered" in low || "consoles" in low)
+			return "ما قدرت أوصل لخدمة الإكس بوكس. تأكد من الإنترنت وإن الإكس بوكس شغّال ومفعّل فيه «الميزات عن بُعد»."
+		if(text.any { it in '؀'..'ۿ' }) return text
+		return "صار خطأ غير متوقع. جرّب مرة ثانية."
 	}
 
 	// -- HTTP ----------------------------------------------------------------------------
@@ -371,13 +383,13 @@ class PhoneServer private constructor(private val context: Context)
 		{
 			val info = lines.firstOrNull { it.startsWith("x-ms-device-info:", true) }?.substringAfter(":")?.trim()
 			val answer = try { xbox.proxy(method, target, if(method == "POST") raw else null, info) }
-			catch(e: Exception) { return send(out, 502, "application/json", JSONObject().put("error", e.message ?: "xbox").toString().toByteArray()) }
+			catch(e: Exception) { return send(out, 502, "application/json", JSONObject().put("error", friendlyError(e)).toString().toByteArray(Charsets.UTF_8)) }
 			return send(out, answer.status, "application/json; charset=utf-8", answer.body)
 		}
 		if(path.startsWith("/api/"))
 		{
 			val body = try { if(raw.isNotEmpty()) JSONObject(String(raw, Charsets.UTF_8)) else JSONObject() } catch(e: Exception) { JSONObject() }
-			val result = try { route(method, path, query, body) } catch(e: Exception) { Log.w(TAG, "route $path", e); error(e.message ?: "صار خطأ غير متوقع.") }
+			val result = try { route(method, path, query, body) } catch(e: Exception) { Log.w(TAG, "route $path", e); error(friendlyError(e)) }
 			when(result)
 			{
 				null -> send(out, 404, "application/json", "{\"error\":\"unknown\"}".toByteArray())

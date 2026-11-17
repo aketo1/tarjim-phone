@@ -85,7 +85,7 @@ class PsnLoginActivity : Activity()
 			runOnUiThread {
 				if(result == null)
 				{
-					note.text = "ما قدرت أجيب معرّف الحساب. ارجع وجرّب مرة ثانية (الرمز يصلح دقايق بس)."
+					note.text = "ما قدرت أجيب معرّف الحساب. ارجع وجرّب مرة ثانية (الرمز يصلح دقائق بس)."
 					done = false
 					web.visibility = View.VISIBLE
 					web.loadUrl(LOGIN_URL)
