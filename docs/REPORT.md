@@ -222,7 +222,7 @@ state: written from the laptop library's request shapes, never run.
 - The code is under AGPL-3.0 (from chiaki-ng). Personal, non-distributed project.
 - Talk to the user in simple Saudi Arabic; code and commits in English.
 - The page (`assets/web`) is a copy of the laptop program's: change it there
-  and copy it with its `launcher/sync_phone_web.py` (section 12).
+  and copy it with its `launcher/sync_phone_web.py` (sections 12 and 13).
 
 ## 11. Game files, the game library, and names (added 2026-11-17)
 
@@ -265,6 +265,8 @@ import on Android are untested.
 
 ## 12. A new look: desert night and liquid glass (added 2026-11-17)
 
+*Replaced the same day by section 13; kept here for the record.*
+
 The page was redone from scratch, together with the laptop program's (its
 report, section 18, has the full description and how the liquid glass works).
 What matters on the phone:
@@ -298,3 +300,37 @@ clicked through in Chrome with the phone mode switched on (the three tabs,
 refraction needs the WebView's Chromium SVG backdrop filters; the S20 FE's
 WebView should have them, but it is unseen. Messages above an open sheet need
 popovers (WebView 114 or newer); an older WebView shows them as before.
+
+## 13. Two layouts over the games' own pictures (added 2026-11-17)
+
+Section 12's look was rejected by the user the same day and redone, again in
+the laptop repository's page (its report, section 19, has the full description
+and the measurements). What matters on the phone:
+
+- **The page is still a copy** of the laptop's (`launcher/sync_phone_web.py`
+  there). It now loads `art.js` and `look.js` (`glass.js` is gone) and carries
+  `assets/web/art/`: 111 WebP pictures of the 28 library games (6.8 MB; the APK
+  is about 60 MB). On a phone the background uses each game's tall picture,
+  cut around its subject.
+- **Two layouts**, «سينما» and «رف الألعاب», chosen in the menu at the top
+  left of the page, remembered in the WebView's storage. On a phone the
+  sections are a glass tab bar at the bottom (الرئيسية، المظهر، الأسماء،
+  الإعداد), and the home page is one screen of picture with the game and the
+  start button; the latest lines and the devices are below it.
+- **The live picture behind the page**: while translating, the page asks
+  `/api/frame` twice a second (the laptop four times), only on the home page,
+  never while the resting screen is on or the app is hidden. `frameJpeg()`
+  makes it with a PixelCopy of the decoder's surface; this path has never run
+  on the phone. If it fails, the page keeps the game's own picture.
+- **`PhoneServer.kt`** serves `.webp` as `image/webp` and lets the WebView keep
+  the games' pictures (like the fonts).
+- **Native colours**: status bar, navigation bar, the WebView's and the Sony
+  sign-in screen's background are the page's near-black `#0B0B0D`. The look
+  page's preview scene is a plain slate instead of the dusk. New launcher icon
+  (black teh on white).
+
+**Verified:** the app builds (`gradlew -PtarjimPrebuilt assembleDebug`) with
+the page, `look.js`, `art.js` and all 111 pictures inside, and without
+`glass.js`. The page was clicked through in Chrome at phone width.
+**Not verified:** nothing ran on the phone (not connected): the look in the
+S20 FE's WebView, the live picture there, and the cost of both on the phone.

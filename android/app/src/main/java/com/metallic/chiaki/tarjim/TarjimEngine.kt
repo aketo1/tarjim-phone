@@ -734,7 +734,7 @@ class TarjimEngine(private val context: Context, private val connectInfo: Connec
 			return TvLink.Layer(LAYER, out.toByteArray(), x, y, w, h)
 		}
 
-		/** The settings screen's preview: a dusk scene with one English line and the Arabic drawn over it. */
+		/** The settings screen's preview: a plain slate scene with one English line and the Arabic drawn over it. */
 		fun preview(context: Context, look: Look, arabic: String): ByteArray
 		{
 			val w = 1080
@@ -742,7 +742,7 @@ class TarjimEngine(private val context: Context, private val connectInfo: Connec
 			val bitmap = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
 			val canvas = Canvas(bitmap)
 			val sky = Paint().apply {
-				shader = LinearGradient(0f, 0f, 0f, h.toFloat(), intArrayOf(Color.rgb(44, 37, 82), Color.rgb(125, 65, 105), Color.rgb(33, 26, 48), Color.rgb(21, 18, 31)),
+				shader = LinearGradient(0f, 0f, 0f, h.toFloat(), intArrayOf(Color.rgb(46, 70, 80), Color.rgb(36, 54, 64), Color.rgb(26, 36, 44), Color.rgb(18, 22, 28)),
 					floatArrayOf(0f, 0.35f, 0.62f, 1f), Shader.TileMode.CLAMP)
 			}
 			canvas.drawRect(0f, 0f, w.toFloat(), h.toFloat(), sky)

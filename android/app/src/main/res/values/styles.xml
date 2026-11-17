@@ -114,5 +114,5 @@
         <item name="android:windowBackground">@color/tarjim_ink</item>
         <item name="android:windowLightStatusBar">false</item>
     </style>
-    <color name="tarjim_ink">#070A1C</color>
+    <color name="tarjim_ink">#0B0B0D</color>
 </resources>

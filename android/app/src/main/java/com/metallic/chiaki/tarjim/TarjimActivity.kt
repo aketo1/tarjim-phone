@@ -44,12 +44,12 @@ class TarjimActivity : Activity()
 	override fun onCreate(savedInstanceState: Bundle?)
 	{
 		super.onCreate(savedInstanceState)
-		// the page is a night sky over dunes: the status bar takes the top of the sky, the navigation bar the dunes
-		window.statusBarColor = Color.rgb(4, 5, 15)
-		window.navigationBarColor = Color.rgb(7, 5, 15)
+		// the page's own near-black, behind the game's picture
+		window.statusBarColor = Color.rgb(11, 11, 13)
+		window.navigationBarColor = Color.rgb(11, 11, 13)
 		val server = PhoneServer.get(this)
 		web = WebView(this)
-		web.setBackgroundColor(Color.rgb(7, 10, 28))
+		web.setBackgroundColor(Color.rgb(11, 11, 13))
 		web.settings.javaScriptEnabled = true
 		web.settings.domStorageEnabled = true
 		web.settings.mediaPlaybackRequiresUserGesture = false  // the Xbox stream's video must start by itself

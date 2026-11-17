@@ -71,21 +71,25 @@ function ask(title, text, yes = "نعم", danger = true) {
 
 const S = {
   live: { state: "idle" }, check: null, profiles: [], profile: null, guideStep: 0, task: null,
-  remote: false, skew: 0, latencies: [], still: false,
+  remote: false, skew: 0, latencies: [], still: false, summary: {}, nodes: {}, recent: [],
 };
 
 /* ------------------------------- navigation ------------------------------- */
 
 function go(view) {
+  if (view === "game") view = "look";  // the look page's old name (links and screenshots)
   if (!$(`#view-${view}`)) return;
   $$(".view").forEach(v => v.classList.toggle("on", v.id === `view-${view}`));
   $$(".nav[data-view]").forEach(b => b.classList.toggle("on", b.dataset.view === view));
+  document.body.dataset.view = view;
+  document.body.classList.remove("show-devices", "scrolled");
   $("main").scrollTo({ top: 0 });
-  if (view === "game") loadProfile();
+  if (view === "look" || view === "names") loadProfile();
   if (view === "guide") renderGuide();
   if (view === "phone") loadPhone();
   if (view === "setup") loadSetup();
   if (!S.app) window.TarjimApp?.keepAwake?.(view === "screen");
+  syncLive();
 }
 $$(".nav[data-view]").forEach(b => b.addEventListener("click", () => go(b.dataset.view)));
 document.addEventListener("click", e => {
@@ -98,38 +102,36 @@ document.addEventListener("keydown", e => {
   const i = Number(e.key) - 1;
   if (Number.isInteger(i) && visible[i]) { e.preventDefault(); visible[i].click(); }
 });
+$("main").addEventListener("scroll", () => document.body.classList.toggle("scrolled", $("main").scrollTop > 8), { passive: true });
+
+// The live picture behind the page: only on the home page, only while translating a PS5 game
+// (the Xbox picture reaches the program cut down to the subtitle area), and only if wanted.
+// ?every=<ms> or ?every=off: another pace, only to measure what the live picture costs.
+const LIVE_PACE = new URLSearchParams(location.search).get("every");
+function syncLive() {
+  const want = UI.liveWanted() && S.live.state === "running" && document.body.dataset.view === "home"
+    && !S.still && S.kind !== "xbox" && LIVE_PACE !== "off";
+  UI.live(want, () => withKey(`/api/frame?t=${Date.now()}`), Number(LIVE_PACE) || (S.app || S.remote ? 500 : 250));
+}
 
 /* ---------------------------------- home ---------------------------------- */
 
 const STEP_TEXT = { models: "أحمّل القارئ والمترجم…", tv: "أشغّل تطبيق التلفزيون…", ps5: "أتصل بصورة الجهاز…" };
-const DEMO = [
-  ["We should leave before the storm gets here.", "يجب أن نغادر قبل وصول العاصفة."],
-  ["Keep your voice down and stay close.", "اخفض صوتك وابقَ قريباً."],
-  ["I never thought I'd see this place again.", "لم أظن أنني سأرى هذا المكان مرة أخرى."],
-  ["Hold the lantern higher, I can't see a thing.", "ارفع الفانوس عالياً، لا أستطيع رؤية شيء."],
-];
-let demoTimer, demoAt = 0, clockTimer;
+let mirrorTimer, clockTimer;
 
+// The line the TV shows right now, over the picture, for about as long as the TV shows it.
 function playLine(en, ar, seconds) {
-  const subs = $(".subs");
   $("#tv-en").textContent = en;
   $("#tv-ar").textContent = ar;
-  subs.classList.remove("play", "hold");
-  if (!seconds) { subs.classList.add("hold"); return; }
-  void subs.offsetWidth;
-  subs.style.setProperty("--dur", `${seconds}s`);
-  subs.classList.add("play");
+  clearTimeout(mirrorTimer);
+  $("#mirror").classList.add("on");
+  if (seconds) mirrorTimer = setTimeout(() => $("#mirror").classList.remove("on"), seconds * 1000);
 }
 function clearSubs() {
-  $(".subs").classList.remove("play", "hold");
+  clearTimeout(mirrorTimer);
+  $("#mirror").classList.remove("on");
 }
-function demoLoop(on) {
-  clearInterval(demoTimer);
-  if (!on || S.still) return;
-  const tick = () => { const [en, ar] = DEMO[demoAt++ % DEMO.length]; playLine(en, ar, 2.6); };
-  tick();
-  demoTimer = setInterval(tick, 5200);
-}
+const readTime = ar => Math.min(6, Math.max(1.6, String(ar).length / 15));
 
 function renderClock() {
   const at = S.live.started_at;
@@ -144,19 +146,14 @@ function renderLive() {
   const { state, step, error } = S.live;
   $("#stage").dataset.state = state;
   document.body.classList.toggle("running", state === "running");
+  document.body.classList.toggle("starting", state === "starting" || state === "stopping");
   $("#orb-title").textContent = { idle: "ابدأ الترجمة", starting: "لحظات…", running: "إيقاف الترجمة", stopping: "أوقّف…" }[state];
-  $("#orb-step").textContent = state === "starting" ? (STEP_TEXT[step] || "")
-    : state === "running" ? "تشتغل الحين على التلفزيون" : state === "stopping" ? "أمسح الشاشة" : "جاهز";
+  $("#orb-step").textContent = state === "starting" ? (STEP_TEXT[step] || "") : state === "stopping" ? "أمسح الشاشة" : "";
   $("#orb").setAttribute("aria-label", state === "running" ? "إيقاف الترجمة" : "تشغيل الترجمة");
-  $("#tv-badge-t").textContent = { idle: "معاينة", starting: "يتصل", running: "مباشر", stopping: "يوقّف" }[state];
-  $("#home-title").textContent = state === "running" ? "الترجمة شغّالة" : state === "starting" ? "نجهّز كل شي…" : "جاهز متى ما أنت جاهز";
-  $("#home-sub").textContent = state === "running"
-    ? "العب عادي. أي سطر إنجليزي يطلع عربي مكانه."
-    : "اختر اللعبة واضغط «ابدأ». الباقي علينا.";
   const alert = $("#alert");
   alert.hidden = !error;
   alert.textContent = error || "";
-  $("#game").disabled = $("#game2").disabled = state !== "idle";
+  $$(".game-select").forEach(s => { s.disabled = state !== "idle"; });
 
   const order = ["models", "tv", "ps5"];
   const at = state === "starting" ? order.indexOf(step) : -1;
@@ -172,18 +169,36 @@ function renderLive() {
   }
 
   if (state !== lastState) {
-    if (state === "idle") demoLoop(true);
-    else { demoLoop(false); if (lastState === "idle" || lastState === null) clearSubs(); }
+    if (state === "idle" && lastState !== null) clearSubs();
     clearInterval(clockTimer);
     if (state === "running") clockTimer = setInterval(renderClock, 1000);
     renderClock();
     lastState = state;
   }
+  renderStatus();
+  syncLive();
+}
+
+// One line above the game: what is happening, or the first device that is not ready.
+function renderStatus() {
+  const { state } = S.live;
+  let cls = "wait", text = "أفحص الأجهزة…";
+  if (state === "running") { cls = "ok"; text = "الترجمة شغّالة على التلفزيون"; }
+  else if (state === "starting") text = STEP_TEXT[S.live.step] || "نجهّز كل شي…";
+  else if (state === "stopping") text = "أوقّف وأمسح الشاشة…";
+  else {
+    const nodes = ["ps5", "pc", "tv"].map(id => S.nodes[id]).filter(Boolean);
+    const bad = nodes.find(n => n.cls === "bad"), warn = nodes.find(n => n.cls === "warn");
+    if (bad) { cls = "bad"; text = `${bad.name}: ${bad.text}`; }
+    else if (warn) { cls = "warn"; text = `${warn.name}: ${warn.text}`; }
+    else if (nodes.length === 3 && nodes.every(n => n.cls === "ok")) { cls = "ok"; text = "جاهز للترجمة · كل الأجهزة متصلة"; }
+  }
+  $("#status").className = `status ${cls}`;
+  $("#status-t").textContent = text;
 }
 
 function renderStats(st) {
-  const set = (id, v) => {
-    const n = $(id);
+  const set = (n, v) => {
     if (n.textContent !== String(v)) {
       n.textContent = v;
       n.classList.remove("bump");
@@ -191,9 +206,11 @@ function renderStats(st) {
       n.classList.add("bump");
     }
   };
-  set("#s-ms", st.latency_ms != null ? `${(st.latency_ms / 1000).toFixed(2)}s` : "—");
-  set("#s-lines", st.lines ?? 0);
-  set("#s-fps", st.fps ?? "—");
+  const ms = st.latency_ms != null ? `${(st.latency_ms / 1000).toFixed(2)}s` : "—";
+  set($("#s-ms"), ms);
+  $$("[data-speed]").forEach(n => { n.textContent = ms; });
+  set($("#s-lines"), st.lines ?? 0);
+  set($("#s-fps"), st.fps ?? "—");
   if (st.latency_ms != null) {
     S.latencies.push(st.latency_ms);
     if (S.latencies.length > 60) S.latencies.shift();
@@ -204,14 +221,16 @@ function drawSpark() {
   const v = S.latencies;
   const line = $("#spark .line"), area = $("#spark .area");
   if (v.length < 2) { line.setAttribute("d", ""); area.setAttribute("d", ""); return; }
-  const top = Math.max(400, ...v), W = 200, H = 48;
-  const pts = v.map((y, i) => [W - (i / (v.length - 1)) * W, H - 4 - (y / top) * (H - 8)]);
+  const top = Math.max(400, ...v), W = 200, H = 40;
+  const pts = v.map((y, i) => [W - (i / (v.length - 1)) * W, H - 3 - (y / top) * (H - 6)]);
   const d = pts.map((p, i) => `${i ? "L" : "M"}${p[0].toFixed(1)} ${p[1].toFixed(1)}`).join(" ");
   line.setAttribute("d", d);
   area.setAttribute("d", `${d} L${pts[pts.length - 1][0]} ${H} L${pts[0][0]} ${H} Z`);
 }
 
 const PEN = '<path d="M4 20h4l10.5-10.5a2.1 2.1 0 0 0-3-3L5 17z"/><path d="m14 8 3 3"/>';
+const PLUS = '<path d="M12 5v14M5 12h14"/>';
+const BOOKS = '<path d="M5 19.5v-14A1.5 1.5 0 0 1 6.5 4H9v15.5M9 4h3.5v15.5"/><path d="m14.6 5.3 3-.8 3.3 14.4-3 .8z"/>';
 
 function feedItem(item) {
   const li = el("li");
@@ -253,7 +272,9 @@ function editLine(li, item) {
 }
 
 function addLine(item, animate = true) {
-  if (S.live.state !== "idle" || S.still) playLine(item.en, item.ar, animate ? 1.1 : 0);
+  // a new line shows over the picture for its reading time; lines from before the page opened do not
+  if (S.still) playLine(item.en, item.ar, 0);
+  else if (animate && S.live.state !== "idle") playLine(item.en, item.ar, readTime(item.ar));
   $("#rest-line").textContent = item.ar;
   const sar = $("#second-ar");
   sar.textContent = item.ar;
@@ -264,6 +285,7 @@ function addLine(item, animate = true) {
   feed.prepend(feedItem(item));
   while (feed.children.length > 30) feed.lastChild.remove();
   $("#feed-count").textContent = `${feed.children.length} سطر`;
+  document.body.classList.add("has-lines");
 }
 
 $("#orb").addEventListener("click", async () => {
@@ -271,7 +293,9 @@ $("#orb").addEventListener("click", async () => {
     if (S.live.state === "idle") {
       S.live = { ...S.live, state: "starting", step: "models", error: "" };
       renderLive();
-      await api("/api/start", { profile: $("#game").value });
+      remember(S.selected);
+      renderShelf();
+      await api("/api/start", { profile: S.selected });
     } else if (S.live.state === "running" || S.live.state === "starting") {
       await api("/api/stop", {});
     }
@@ -281,34 +305,160 @@ $("#orb").addEventListener("click", async () => {
   }
 });
 
+/* ---- the three devices: circles in the bar (cinema), a card (shelf, and on phones) ---- */
+
+const NODE_NAME = { ps5: () => (S.kind === "xbox" ? "الإكس بوكس" : "الـPS5"), pc: () => (S.app ? "الجوال" : "اللابتوب"), tv: () => "التلفزيون" };
 function setNode(id, cls, text, extra) {
-  $(`#${id}`).className = cls;
-  $(`#${id}-t`).textContent = text;
-  $(`#${id}-s`).textContent = extra || "";
+  const name = NODE_NAME[id]();
+  S.nodes[id] = { cls, text, name };
+  $$(`[data-node="${id}"]`).forEach(n => {
+    n.classList.remove("ok", "warn", "bad", "wait");
+    n.classList.add(cls);
+    n.title = `${name}: ${text}${extra ? ` (${extra})` : ""}`;
+  });
+  $$(`[data-node-t="${id}"]`).forEach(n => { n.textContent = text; });
+  renderStatus();
 }
 async function runCheck() {
-  if (!S.check) ["n-ps5", "n-pc", "n-tv"].forEach(id => setNode(id, "wait", "أفحص…"));
+  if (!S.check) ["ps5", "pc", "tv"].forEach(id => setNode(id, "wait", "أفحص…"));
   try { S.check = await api("/api/check"); } catch { return; }
   const c = S.check;
   const by = Object.fromEntries(c.items.map(i => [i.id, i]));
   const ps5ok = by.ps5.ok && by.link.ok;
   const xbox = c.kind === "xbox";
   S.kind = xbox ? "xbox" : "ps5";
-  $("#n-ps5-n").textContent = xbox ? "الإكس بوكس" : "الـPS5";
-  setNode("n-ps5", ps5ok ? "ok" : "bad",
+  $$('[data-node-n="ps5"]').forEach(n => { n.textContent = NODE_NAME.ps5(); });
+  setNode("ps5", ps5ok ? "ok" : "bad",
     ps5ok ? `${c.ps5_name || "متصل"} · ${xbox ? "مربوط" : "شغّال"}` : (!by.link.ok ? by.link.hint : by.ps5.hint), c.ps5_host);
-  setNode("n-pc", !by.models.ok ? "bad" : by.power.ok ? "ok" : "warn",
+  setNode("pc", !by.models.ok ? "bad" : by.power.ok ? "ok" : "warn",
     !by.models.ok ? by.models.hint : by.power.ok ? "على الشاحن · يقرأ ويترجم" : "على البطارية: الترجمة أبطأ. شبّك الشاحن.");
-  setNode("n-tv", by.tv.ok ? "ok" : "bad", by.tv.ok ? `${c.tv_model || "متصل"} · جاهز` : by.tv.hint, c.tv_ip);
-  const chip = $("#power-chip");
-  chip.className = `rail-foot only-local ${by.power.ok ? "ok" : "bad"}`;
-  chip.title = by.power.ok ? "اللابتوب على الشاحن" : "اللابتوب على البطارية: الترجمة أبطأ";
+  setNode("tv", by.tv.ok ? "ok" : "bad", by.tv.ok ? `${c.tv_model || "متصل"} · جاهز` : by.tv.hint, c.tv_ip);
   if ($("#view-guide").classList.contains("on")) {
     const typing = ["INPUT", "TEXTAREA"].includes(document.activeElement?.tagName);
     if (!typing && !S.task?.running) renderGuide(); else renderSteps();
   }
 }
 $("#recheck").addEventListener("click", () => { S.check = null; runCheck(); });
+$$("[data-goto-devices]").forEach(b => b.addEventListener("click", () => {
+  if (document.body.dataset.view !== "home") go("home");
+  if (matchMedia("(max-width: 640px)").matches) $("#devices").scrollIntoView({ behavior: "smooth", block: "center" });
+  else document.body.classList.toggle("show-devices");
+}));
+document.addEventListener("pointerdown", e => {
+  if (!e.target.closest("#devices, [data-goto-devices]")) document.body.classList.remove("show-devices");
+});
+
+/* ---- the chosen game: its picture, its name, what it is set to ---- */
+
+const BG_TEXT = { cover: "يغطّي الإنجليزي", plate: "خلفية داكنة", none: "فوق الإنجليزي" };
+const hasArabic = t => /[؀-ۿ]/.test(t || "");
+const summaryOf = p => ({ names: (p.glossary || []).length, font: p.font, background: p.background });
+
+async function renderGame() {
+  const p = S.profiles.find(x => x.name === S.selected);
+  if (!p) return;
+  const a = UI.art(p.name, p.title);
+  UI.backdrop(a);
+  const ar = a?.ar || (hasArabic(p.title) ? p.title : "");
+  const en = hasArabic(p.title) ? (a?.en || "") : p.title;
+  const title = $("#g-pick"), logo = $("#g-logo");
+  $("#g-en").textContent = en;
+  $("#g-name").textContent = ar;
+  if (a?.logo) { logo.src = a.logo; logo.alt = en; logo.hidden = false; } else { logo.hidden = true; logo.removeAttribute("src"); }
+  title.classList.toggle("has-logo", !!a?.logo);
+  title.classList.toggle("latin-only", !ar);
+  title.classList.toggle("arabic-only", !en && !a?.logo);
+  title.title = S.live.state === "idle" ? "غيّر اللعبة" : p.title;
+  renderMeta(p.name);
+  if (!S.summary[p.name]) {
+    try { S.summary[p.name] = summaryOf(await api(`/api/profile?name=${encodeURIComponent(p.name)}`)); } catch { return; }
+    renderMeta(p.name);
+  }
+}
+function renderMeta(name) {
+  if (name !== S.selected) return;
+  const s = S.summary[name];
+  const chips = [];
+  if (s) {
+    chips.push(s.names ? `${s.names} اسم` : "بدون قاموس أسماء");
+    const f = FONTS.find(x => x.id === s.font);
+    if (f) chips.push(`خط ${f.name}`);
+    if (BG_TEXT[s.background]) chips.push(BG_TEXT[s.background]);
+  }
+  $("#g-meta").replaceChildren(...chips.map(t => el("span", "chip", t)));
+}
+
+function gameTile(p, tag = "button") {
+  const a = UI.art(p.name, p.title);
+  const t = el(tag, `tile ${a ? "" : "plain"} ${p.name === S.selected ? "sel" : ""}`);
+  t.title = p.title;
+  if (a) t.style.backgroundImage = `url("${a.cover}")`;
+  else t.append(el("b", "", p.title));
+  if (tag === "button") t.append(el("span", "cap", a?.en || p.title));
+  return t;
+}
+function addTile(tag, icon, label) {
+  const t = el(tag, "tile add glass");
+  t.append(svg(icon), el("span", "", label));
+  return t;
+}
+// The shelf keeps the games in the order they were last played, as a console does;
+// picking one does not move it, starting the translation does.
+function remember(name) {
+  S.recent = [name, ...S.recent.filter(n => n !== name)].slice(0, 40);
+  if (!S.still) UI.store.set("tarjim-recent", JSON.stringify(S.recent));
+}
+function shelfOrder() {
+  const rank = p => (p.name === "default" ? 1e6 : S.recent.includes(p.name) ? S.recent.indexOf(p.name) : 1e3);
+  return [...S.profiles].sort((a, b) => rank(a) - rank(b) || a.title.localeCompare(b.title));
+}
+function renderShelf() {
+  const tiles = shelfOrder().map(p => {
+    const t = gameTile(p);
+    t.addEventListener("click", () => pickGame(p.name));
+    return t;
+  });
+  const add = addTile("button", PLUS, "لعبة");
+  add.title = "أضف لعبة";
+  add.addEventListener("click", newGame);
+  const lib = addTile("button", BOOKS, "المكتبة");
+  lib.title = "قوائم أسماء جاهزة لألعاب ما فيها عربي";
+  lib.addEventListener("click", openLibrary);
+  $("#shelf").replaceChildren(...tiles, add, lib);
+}
+function pickGame(name) {
+  if (S.live.state !== "idle" && name !== S.selected) return toast("وقّف الترجمة أول، بعدين غيّر اللعبة");
+  selectGame(name);
+}
+function newGame() {
+  $("#new-title").value = "";
+  $("#dlg-new").showModal();
+}
+
+// My games, as covers: from the game's name on the home page (and on a phone, where the shelf is small)
+function openGames() {
+  if (S.live.state !== "idle") return toast("وقّف الترجمة أول، بعدين غيّر اللعبة");
+  const d = $("#dlg-games");
+  const items = shelfOrder().map(p => {
+    const b = el("button", "pick");
+    b.append(gameTile(p, "div"), el("b", "", p.title));
+    b.addEventListener("click", () => { d.close(); selectGame(p.name); });
+    return b;
+  });
+  const add = el("button", "pick");
+  add.append(addTile("div", PLUS, "لعبة جديدة"), el("b", "", "أضف لعبة"));
+  add.addEventListener("click", () => { d.close(); newGame(); });
+  const lib = el("button", "pick");
+  lib.append(addTile("div", BOOKS, "المكتبة"), el("b", "", "من المكتبة"));
+  lib.addEventListener("click", () => { d.close(); openLibrary(); });
+  $("#games-grid").replaceChildren(...items, add, lib);
+  d.showModal();
+  $(".sheet", d).focus();
+}
+$("#g-pick").addEventListener("click", openGames);
+$$("[data-close]").forEach(b => b.addEventListener("click", () => b.closest("dialog").close()));
+// a tap outside a sheet closes it
+for (const d of $$("dialog.wide")) d.addEventListener("click", e => { if (e.target === d) d.close(); });
 
 /* --------------------------------- settings --------------------------------- */
 
@@ -320,23 +470,27 @@ const FONTS = [
 ];
 
 function fillGames() {
-  for (const sel of [$("#game"), $("#game2")]) {
-    const cur = sel.value || S.selected;
+  for (const sel of $$(".game-select")) {
     sel.replaceChildren(...S.profiles.map(p => {
       const o = el("option", "", p.title);
       o.value = p.name;
       return o;
     }));
-    if (S.profiles.some(p => p.name === cur)) sel.value = cur;
+    if (S.profiles.some(p => p.name === S.selected)) sel.value = S.selected;
   }
+  renderShelf();
 }
 function selectGame(name) {
+  if (!S.profiles.some(p => p.name === name)) name = (S.profiles.find(p => p.name !== "default") || S.profiles[0])?.name;
+  if (!name) return;
   S.selected = name;
-  $("#game").value = $("#game2").value = name;
-  if ($("#view-game").classList.contains("on")) loadProfile();
+  if (!S.still) UI.store.set("tarjim-game", name);
+  $$(".game-select").forEach(sel => { sel.value = name; });
+  renderShelf();
+  renderGame();
+  if (["look", "names"].includes(document.body.dataset.view)) loadProfile();
 }
-$("#game").addEventListener("change", e => selectGame(e.target.value));
-$("#game2").addEventListener("change", e => selectGame(e.target.value));
+$$(".game-select").forEach(sel => sel.addEventListener("change", e => selectGame(e.target.value)));
 
 let saveTimer, previewTimer, pending = {};
 function save(patch, quiet) {
@@ -349,6 +503,8 @@ function save(patch, quiet) {
     try {
       const fresh = await api("/api/profile", { name: S.profile.name, ...send });
       S.profile.font_size = fresh.font_size;
+      S.summary[S.profile.name] = summaryOf(S.profile);
+      renderMeta(S.profile.name);
       if (!quiet) toast(S.live.state === "running" ? "تطبّق على التلفزيون ✓" : "انحفظ ✓");
     } catch (e) { toast(e.message); }
   }, 350);
@@ -373,9 +529,11 @@ function refreshPreview() {
 }
 
 async function loadProfile() {
-  const name = $("#game2").value || S.selected || "default";
+  const name = S.selected || "default";
   let p;
   try { p = S.profile = await api(`/api/profile?name=${encodeURIComponent(name)}`); } catch (e) { return toast(e.message); }
+  S.summary[name] = summaryOf(p);
+  renderMeta(name);
 
   $("#fonts").replaceChildren(...FONTS.map(f => {
     const b = el("button", `font ${p.font === f.id ? "on" : ""}`);
@@ -615,7 +773,7 @@ $("#names-find").addEventListener("input", filterNames);
 
 const LIB = { items: [] };
 const hueOf = text => [...String(text)].reduce((h, c) => (h * 31 + c.codePointAt(0)) % 360, 7);
-// Each series gets its own poster: a colour and a pattern that suit it (no game art). [hue, pattern, saturation]
+// A game without its own art (art/) gets a plain poster in a colour that suits its series. [hue, pattern, saturation]
 const SERIES_LOOK = {
   "Red Dead": [14, 0, 1], "Grand Theft Auto": [292, 4, 1], "Yakuza": [338, 1, 1], "Like a Dragon": [338, 1, 1],
   "The Last of Us": [128, 2, .75], "Silent Hill": [222, 1, .4], "Max Payne": [206, 2, .7], "L.A. Noire": [38, 0, .7],
@@ -642,10 +800,18 @@ function renderLibrary() {
 function libCard(p) {
   const card = el("article", `lib-card ${p.installed ? "on" : ""}`);
   const family = p.series || p.title;
-  const [hue, pattern, sat] = SERIES_LOOK[family] || [hueOf(family), hueOf(`${family}#`) % 5, 1];
+  const [hue, , sat] = SERIES_LOOK[family] || [hueOf(family), 0, 1];
   card.style.setProperty("--hue", hue);
   card.style.setProperty("--sat", sat);
-  const poster = el("div", `poster p${pattern}`);
+  const poster = el("div", "poster");
+  const a = UI.art(p.id, p.title);
+  if (a) {
+    const img = el("img");
+    img.src = a.cover;
+    img.alt = "";
+    img.loading = "lazy";
+    poster.append(img);
+  }
   poster.append(el("b", "poster-ar", p.title_ar || p.title));
   if (p.installed) poster.append(el("span", "poster-ok", "✓ مضافة"));
   const title = el("b", "lib-title", p.title);
@@ -687,6 +853,7 @@ function packSummary(r) {
 }
 function afterPackIn(r) {
   toast(packSummary(r));
+  delete S.summary[r.name];
   S.profiles = r.profiles;
   fillGames();
   selectGame(r.name);
@@ -696,7 +863,7 @@ $("#lib-close").addEventListener("click", () => $("#dlg-library").close());
 $("#lib-find").addEventListener("input", renderLibrary);
 
 $("#pack-export").addEventListener("click", async () => {
-  const name = S.profile?.name || $("#game2").value || "default";
+  const name = S.profile?.name || S.selected || "default";
   let r;
   try { r = await api(`/api/pack/export?name=${encodeURIComponent(name)}`); } catch (e) { return toast(e.message); }
   const text = JSON.stringify(r.pack, null, 1);
@@ -773,7 +940,7 @@ function nameRow(row, collect) {
   return r;
 }
 
-$("#new-game").addEventListener("click", () => { $("#new-title").value = ""; $("#dlg-new").showModal(); });
+$("#new-game").addEventListener("click", newGame);
 $("#dlg-new").addEventListener("close", async () => {
   const title = $("#new-title").value.trim();
   if ($("#dlg-new").returnValue !== "ok" || !title) return;
@@ -1054,7 +1221,7 @@ function renderGuide() {
       <div class="tips">
         <div><b>شبّك الشاحن</b><p>على البطارية ويندوز يبطّئ المعالج والترجمة تتأخر.</p></div>
         <div><b>العب بحسابك العادي</b><p>الحساب الثاني للنسخة بس. لا تدخل اللعبة فيه.</p></div>
-        <div><b>أضف أسماء الشخصيات</b><p>من «المظهر» ‹ قاموس الأسماء، عشان تنكتب صح دايماً.</p></div>
+        <div><b>أضف أسماء الشخصيات</b><p>من «الأسماء»، عشان تنكتب صح دايماً.</p></div>
         <div><b>ترجمة ما عجبتك؟</b><p>في الرئيسية اضغط القلم جنب السطر واكتبها بطريقتك. تنحفظ للمرة الجاية.</p></div>
         <div><b>الترجمة تطلع قبل اكتمال السطر؟</b><p>فعّل «اللعبة تكتب النص حرف حرف» في المظهر ‹ التوقيت.</p></div>
         <div><b>تبي تشيل ترجِم من التلفزيون؟</b><p>يحذف التطبيق ويرجّع إعدادات التلفزيون مثل ما كانت.</p>
@@ -1257,8 +1424,9 @@ async function boot() {
   S.app = hello.app === "phone";
   document.body.classList.toggle("remote", S.remote);
   document.body.classList.toggle("phoneapp", S.app);
+  UI.menu(what => { if (what === "live") syncLive(); });
   if (S.app) {
-    $("#n-pc-n").textContent = "الجوال";
+    $$('[data-node-n="pc"]').forEach(n => { n.textContent = "الجوال"; });
     // The phone covers the English with a plate; it cannot repaint the scene under the letters.
     for (const preset of PRESETS) if (preset.set.background === "cover") preset.set.background = "plate";
     $("#try-tv").title = "يشتغل والترجمة شغّالة";
@@ -1283,7 +1451,11 @@ async function boot() {
   S.still = q.has("still");
   document.body.classList.toggle("still", S.still);
   S.kind = st.console || "ps5";
-  S.selected = st.live.profile || st.last_profile || (st.profiles.find(p => p.name !== "default") || st.profiles[0])?.name;
+  try { S.recent = S.still ? [] : JSON.parse(UI.store.get("tarjim-recent") || "[]"); } catch { S.recent = []; }
+  if (!S.recent.length && st.last_profile) S.recent = [st.last_profile];
+  const mine = UI.store.get("tarjim-game");
+  S.selected = st.live.profile || (S.profiles.some(p => p.name === mine) ? mine : null) || st.last_profile
+    || (st.profiles.find(p => p.name !== "default") || st.profiles[0])?.name;
   fillGames();
   selectGame(S.selected);
   renderLive();
@@ -1296,14 +1468,16 @@ async function boot() {
   if (S.still) {
     await runCheck();
     if (q.has("demo") || q.has("ok")) {
-      setNode("n-ps5", "ok", "PS5 · شغّال", "192.168.1.60");
-      setNode("n-pc", "ok", "على الشاحن · يقرأ ويترجم");
-      setNode("n-tv", "ok", "Android TV · جاهز", "192.168.1.50");
+      setNode("ps5", "ok", "PS5 · شغّال", "192.168.1.60");
+      setNode("pc", "ok", "على الشاحن · يقرأ ويترجم");
+      setNode("tv", "ok", "Android TV · جاهز", "192.168.1.50");
     }
     if (q.get("step")) S.guideStep = Number(q.get("step"));
     if (q.get("game")) selectGame(q.get("game"));
     if (q.get("view")) go(q.get("view"));
     if (q.has("library")) openLibrary();
+    if (q.has("games")) openGames();
+    if (q.get("scroll")) requestAnimationFrame(() => $("main").scrollTo(0, Number(q.get("scroll"))));
     if (q.has("demo")) {
       S.live = { state: "running", step: "", error: "", started_at: Date.now() / 1000 + S.skew - 754 };
       renderLive();
@@ -1311,8 +1485,6 @@ async function boot() {
       addLine({ en: "We should leave before the storm gets here.", ar: "يجب أن نغادر قبل وصول العاصفة." }, false);
       addLine({ en: "Keep your voice down and stay close.", ar: "اخفض صوتك وابقَ قريباً." }, false);
       addLine({ en: "Hold the lantern higher, I can't see a thing.", ar: "ارفع الفانوس عالياً، لا أستطيع رؤية شيء." }, false);
-    } else {
-      playLine(...DEMO[0], 0);
     }
     return;
   }

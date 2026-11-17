@@ -399,9 +399,10 @@ class PhoneServer private constructor(private val context: Context)
 		val type = when(asset.substringAfterLast('.'))
 		{
 			"html" -> "text/html; charset=utf-8"; "css" -> "text/css; charset=utf-8"; "js" -> "text/javascript; charset=utf-8"
-			"png" -> "image/png"; "ttf" -> "font/ttf"; else -> "application/octet-stream"
+			"png" -> "image/png"; "webp" -> "image/webp"; "ttf" -> "font/ttf"; else -> "application/octet-stream"
 		}
-		send(out, 200, type, bytes, cache = asset.startsWith("fonts/"))
+		// fonts and the games' pictures never change inside one version of the app
+		send(out, 200, type, bytes, cache = asset.startsWith("fonts/") || asset.startsWith("web/art/"))
 	}
 
 	private fun send(out: OutputStream, code: Int, type: String, body: ByteArray, cache: Boolean = false)
