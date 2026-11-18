@@ -414,3 +414,25 @@ over the version of 2026-11-16.
 crash in the log).
 **Not verified:** the new page on the phone's screen (the phone was locked when the app was
 opened), and a translation session.
+
+## 19. The hotspot's new network, a page that fits, version 0.4.2 (added 2026-11-18)
+
+- **The error the user saw:** "Session request connect failed: Timeout" every 12 s. The app
+  had saved the PS5 as 192.168.172.109 and the TV as 192.168.172.251, but the phone's hotspot
+  now runs 192.168.136.x: Android's hotspot moves to a new network now and then, and each
+  device keeps its last number (192.168.136.109, 192.168.136.251).
+- **Fix (`NetFix.kt`, used when a translation starts):** an address that is not on any of the
+  phone's home networks is looked for on the current one. The same last number is tried
+  first, then every address of a home-sized network:
+  - the PS5 by Sony's discovery on UDP 9302, which also answers in rest mode;
+  - the TV app by its port, 47800.
+
+  The found address is saved. When the PS5 is not found, the page says so instead of retrying
+  silently.
+- **The page fits a 360-point screen** (the laptop program's section 25).
+- **Version 0.4.2** (versionCode 14), built by GitHub Actions for commit 15bf03a and installed
+  on the Galaxy S20 FE with `adb install -r`.
+
+**Verified:** the app compiles and installs; the phone reports 0.4.2.
+**Not verified:** a translation session that finds the PS5 on the new network; the PS5 was
+not tried (the phone was locked when the app was opened).

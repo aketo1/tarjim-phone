@@ -24,11 +24,16 @@ android {
     compileSdk 35
     ndkVersion "28.2.13676358"
 
+    // The release build is the one people install; lint's checks on chiaki-ng's code must not stop it.
+    lint {
+        checkReleaseBuilds false
+    }
+
     defaultConfig {
         applicationId "dev.tarjim.mobile"
         minSdk 24
         targetSdk 35
-        versionCode 14
+        versionCode 15
         versionName "0.4.2"
         ndk {
             abiFilters "arm64-v8a"
@@ -94,7 +99,9 @@ android {
 
     buildTypes {
         release {
-            minifyEnabled true
+            // No shrinking: it can drop classes the app reaches by reflection (Room, the page's
+            // JavaScript bridge, ML Kit), and an official build must not lose a feature silently.
+            minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
     }
