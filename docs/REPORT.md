@@ -403,3 +403,14 @@ through Claude Code; Gemini for one round of Arabic wording). The pictures in `d
 are made by the laptop program's `launcher/make_readme_media.py` from the shared page at phone
 size (not from the phone itself); the laptop remote's "second screen" is left out, since this
 app has none. The chiaki-ng attribution stays in the developer part.
+
+## 18. Version 0.4.1, installed on the phone (added 2026-11-18)
+
+`versionCode 13`, `versionName "0.4.1"` (was 12, "0.1.0", which was never raised). The build
+of GitHub Actions for commit aab2dc1 was installed on the Galaxy S20 FE with `adb install -r`
+over the version of 2026-11-16.
+
+**Verified:** the phone reports versionCode 13 / 0.4.1; the app starts (its process runs, no
+crash in the log).
+**Not verified:** the new page on the phone's screen (the phone was locked when the app was
+opened), and a translation session.
