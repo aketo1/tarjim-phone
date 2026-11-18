@@ -223,9 +223,10 @@ state: written from the laptop library's request shapes, never run.
 - Talk to the user in simple Saudi Arabic; code and commits in English.
 - The page (`assets/web`) is a copy of the laptop program's: change it there
   and copy it with its `launcher/sync_phone_web.py` (sections 12 and 13).
-- The translation rules exist twice: here (`TarjimEngine.kt`, `Gender.kt`) and in the
-  laptop program (`translate.py`, `gender.py`). Change both and keep `GenderTest.kt` and the
-  laptop's `test_gender.py` alike (section 14).
+- The translation rules exist twice: here (`TarjimEngine.kt`, `Gender.kt`, `Terms.kt`) and
+  in the laptop program (`translate.py`, `gender.py`, `terms.py`). Change both and keep
+  `GenderTest.kt` / `test_gender.py` and `TermsTest.kt` / `test_terms.py` alike (sections
+  14 and 15).
 
 ## 11. Game files, the game library, and names (added 2026-11-17)
 
@@ -357,3 +358,24 @@ Done with the laptop program (its report, section 20, has the measurements). Her
 **Verified:** the app builds; the gender unit test passes on the computer.
 **Not verified:** anything on the phone. ML Kit's mistakes differ from the laptop model's,
 so how much these rules help here was not measured.
+
+## 15. Game words and more places (added 2026-11-18)
+
+Done with the laptop program (its report, section 21, has the measurements). Here:
+
+- **Game words** (`Terms.kt`, new; the laptop's `terms.py` in Kotlin, the same lists): words
+  a game uses in its own sense go into plain English before ML Kit translates ("the fence",
+  "case the bank", "lose the law", "hogtie", "safehouse", "wanted level", "we've got
+  company"...), plus each series' own words (Red Dead, GTA, The Last of Us, Yakuza). The
+  series comes from the game's library id or its title (`TarjimEngine.series`).
+- **Commands, not verbal nouns**: «شراء بعض منشط» for "Buy some tonic" becomes «اشتر بعض
+  منشط», when the English line opens with that verb.
+- **85 more places and names** in the game library (`assets/packs/`, written by the laptop's
+  `launcher/build_packs.py`).
+- **22 game commands** in `Gender.kt`.
+- **Tests**: `app/src/test/.../TermsTest.kt` (the cases of the laptop's `test_terms.py`) and
+  `GenderTest.kt` pass on the computer.
+
+**Verified:** the app builds; the unit tests pass. **Not verified:** anything on the phone.
+ML Kit's mistakes differ from the laptop model's, so how much these rules help here was not
+measured.

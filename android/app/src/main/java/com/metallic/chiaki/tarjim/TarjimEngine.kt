@@ -68,6 +68,8 @@ class TarjimEngine(private val context: Context, private val connectInfo: Connec
 	var onStatus: ((Status) -> Unit)? = null
 	var onLine: ((Line) -> Unit)? = null
 	@Volatile var look = Look(store.load(profile))
+	/** The game's series, for its own words (Terms). */
+	@Volatile private var series = Terms.seriesOf(profile, store.load(profile).optString("title", ""))
 
 	private val worker = HandlerThread("tarjim-engine").apply { start() }
 	private val handler = Handler(worker.looper)
@@ -225,6 +227,7 @@ class TarjimEngine(private val context: Context, private val connectInfo: Connec
 	fun reload()
 	{
 		look = Look(store.load(profile))
+		series = Terms.seriesOf(profile, store.load(profile).optString("title", ""))
 		handler.post { cache.clear() }
 	}
 
@@ -678,8 +681,10 @@ class TarjimEngine(private val context: Context, private val connectInfo: Connec
 			return r1.containsMatchIn(text) || r2.containsMatchIn(text) || r3.containsMatchIn(text)
 		}
 
-		fun translate(english: String, lk: Look): String
+		fun translate(line: String, lk: Look): String
 		{
+			val gameSeries = series
+			val english = Terms.rewrite(line, gameSeries)  // the game's own words in plain English
 			// The game's names in this line, longest first. A name found only inside a longer one
 			// ("Arthur" in "Arthur Morgan") is part of that one and does not count.
 			val matched = ArrayList<Triple<String, String, Regex>>()
@@ -726,6 +731,7 @@ class TarjimEngine(private val context: Context, private val connectInfo: Connec
 			}
 			// names the translator left in Latin letters
 			for((_, ar, pattern) in matched) arabic = pattern.replace(arabic, Regex.escapeReplacement(ar))
+			arabic = Terms.commandsNotNouns(arabic, english)
 			if(allFemale)
 			{
 				if(matched.any { isVocative(english, it.first) })
@@ -742,6 +748,7 @@ class TarjimEngine(private val context: Context, private val connectInfo: Connec
 				for((rx, repl) in MASC_DEFAULT_FIXES) arabic = rx.replace(arabic, repl)
 				arabic = Gender.masculinize(arabic)
 			}
+			arabic = Terms.fixArabic(arabic, english, gameSeries)
 			if('"' !in english) arabic = arabic.replace("\"", "")
 			return clean(arabic)
 		}

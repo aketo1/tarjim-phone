@@ -50,6 +50,13 @@
     {"en": "clicker", "ar": "كليكر"},
     {"en": "bloaters", "ar": "البلوترز"},
     {"en": "bloater", "ar": "بلوتر"},
-    {"en": "cordyceps", "ar": "الكورديسيبس"}
+    {"en": "cordyceps", "ar": "الكورديسيبس"},
+    {"en": "Bill's Town", "ar": "بلدة بيل"},
+    {"en": "Hunters", "ar": "الصيادون"},
+    {"en": "Kansas City", "ar": "كانساس سيتي"},
+    {"en": "runners", "ar": "الرانرز"},
+    {"en": "runner", "ar": "رانر"},
+    {"en": "stalkers", "ar": "الستوكرز"},
+    {"en": "stalker", "ar": "ستوكر"}
   ]
 }

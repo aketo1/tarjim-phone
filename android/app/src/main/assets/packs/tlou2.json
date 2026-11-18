@@ -62,6 +62,12 @@
     {"en": "clicker", "ar": "كليكر"},
     {"en": "bloaters", "ar": "البلوترز"},
     {"en": "bloater", "ar": "بلوتر"},
-    {"en": "cordyceps", "ar": "الكورديسيبس"}
+    {"en": "cordyceps", "ar": "الكورديسيبس"},
+    {"en": "runners", "ar": "الرانرز"},
+    {"en": "runner", "ar": "رانر"},
+    {"en": "stalkers", "ar": "الستوكرز"},
+    {"en": "stalker", "ar": "ستوكر"},
+    {"en": "Rat King", "ar": "ملك الجرذان"},
+    {"en": "FOB", "ar": "القاعدة الأمامية"}
   ]
 }
