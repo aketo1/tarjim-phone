@@ -393,3 +393,13 @@ not needed here.)
 
 **Verified:** the app builds; `TermsTest` and `GenderTest` pass on the computer.
 **Not verified:** anything on the phone.
+
+## 17. The README (added 2026-11-18)
+
+Rewritten in everyday Arabic: a banner (a phone going through the app's screens), badges,
+links to the sections, the features beside a phone GIF, the library's covers, collapsible
+setup and questions, and a section on how the app was built with the help of AI (Claude
+through Claude Code; Gemini for one round of Arabic wording). The pictures in `docs/media/`
+are made by the laptop program's `launcher/make_readme_media.py` from the shared page at phone
+size (not from the phone itself); the laptop remote's "second screen" is left out, since this
+app has none. The chiaki-ng attribution stays in the developer part.
