@@ -108,10 +108,13 @@ $("main").addEventListener("scroll", () => document.body.classList.toggle("scrol
 // (the Xbox picture reaches the program cut down to the subtitle area), and only if wanted.
 // ?every=<ms> or ?every=off: another pace, only to measure what the live picture costs.
 const LIVE_PACE = new URLSearchParams(location.search).get("every");
+// How wide the PS5 picture must be, in real screen pixels, to fill a box this big without
+// being enlarged (enlarged, it looks pixelated). The program never sends more than the PS5's own.
+const frameWidth = (w, h) => Math.ceil(Math.max(w, h * 16 / 9) * (window.devicePixelRatio || 1) / 160) * 160;
 function syncLive() {
   const want = UI.liveWanted() && S.live.state === "running" && document.body.dataset.view === "home"
     && !S.still && S.kind !== "xbox" && LIVE_PACE !== "off";
-  UI.live(want, () => withKey(`/api/frame?t=${Date.now()}`), Number(LIVE_PACE) || (S.app || S.remote ? 500 : 250));
+  UI.live(want, () => withKey(`/api/frame?w=${frameWidth(innerWidth, innerHeight)}&t=${Date.now()}`), Number(LIVE_PACE) || (S.app || S.remote ? 500 : 250));
 }
 
 /* ---------------------------------- home ---------------------------------- */
@@ -724,7 +727,8 @@ function renderRegion() {
     const img = new Image();
     img.onload = () => { $("#region-img").src = img.src; $("#region-hint").hidden = true; };
     img.onerror = () => { $("#region-img").removeAttribute("src"); $("#region-hint").hidden = false; };
-    img.src = withKey(`/api/frame?t=${Date.now()}`);
+    const box = $("#region-img").parentElement;
+    img.src = withKey(`/api/frame?w=${frameWidth(box.clientWidth || innerWidth, box.clientHeight || 0)}&t=${Date.now()}`);
   };
   $("#region-shot").onclick = shot;
   shot();

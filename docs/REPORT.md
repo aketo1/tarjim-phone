@@ -454,3 +454,12 @@ not tried (the phone was locked when the app was opened).
 - versionCode 15.
 
 **Not verified:** the release build on the phone (to be installed when it is built).
+
+## 21. Sharper pictures (added 2026-11-18)
+
+The page's pictures were synced from the laptop program (section 27 of its report):
+- The games' backgrounds are at Steam's full 3840 x 1240.
+- GTA VI uses Rockstar's official cover art.
+- The box covers are a real 600 x 900.
+
+The art is 12 MB instead of 6.8 MB. When the page runs against the laptop, it asks for a live picture as wide as the screen. This app's own picture (`TarjimEngine.frameJpeg`) stays 960 x 540.
