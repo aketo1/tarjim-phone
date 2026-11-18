@@ -207,6 +207,8 @@ class PhoneServer private constructor(private val context: Context)
 	{
 		val address = Regex("""\d{1,3}(\.\d{1,3}){3}""")
 		if(!address.matches(store.tv)) return error("اكتب عنوان التلفزيون في «الإعداد» أول.")
+		// The hotspot may have moved to a new network since the addresses were saved: find them there.
+		NetFix.locate(store.tv, NetFix.listens(47800)).let { if(it != store.tv) store.tv = it }
 		if(store.kind == "xbox")
 		{
 			if(!xbox.linked) return error("الجوال مو مربوط بحساب الإكس بوكس. افتح «الإعداد» واربط حساب مايكروسوفت.")
@@ -218,6 +220,9 @@ class PhoneServer private constructor(private val context: Context)
 			return JSONObject().put("started", true)
 		}
 		if(!address.matches(store.console)) return error("اكتب عنوان الـPS5 في «الإعداد» أول.")
+		NetFix.locate(store.console, NetFix.ps5()).let { if(it != store.console) store.console = it }
+		if(!NetFix.onCurrentNetwork(store.console))
+			return error("ما لقيت الـPS5 على شبكة الجوال. تأكد إنه شغّال (أو في وضع الراحة) ومتصل بنفس الشبكة.")
 		val host = registered().firstOrNull() ?: return error("الجوال مو مربوط بالـPS5. افتح «الإعداد» واضغط «اربط الـPS5».")
 		// Tarjim reads a fixed, light picture: 1080p, 30 frames, H.264.
 		val video = ConnectVideoProfile.preset(VideoResolutionPreset.RES_1080P, VideoFPSPreset.FPS_30, Codec.CODEC_H264)
