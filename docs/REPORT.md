@@ -436,3 +436,21 @@ opened), and a translation session.
 **Verified:** the app compiles and installs; the phone reports 0.4.2.
 **Not verified:** a translation session that finds the PS5 on the new network; the PS5 was
 not tried (the phone was locked when the app was opened).
+
+## 20. The official build, and the TV app in the release (added 2026-11-18)
+
+- **A release build.** GitHub Actions now builds the release variant (`assembleRelease`),
+  signed with the same fixed key, so it installs over the earlier builds.
+  - It is not debuggable: the earlier test build let anyone with a cable read the app's data,
+    the PS5 keys included.
+  - It is not shrunk: R8 could drop classes reached by reflection (Room, the page's
+    JavaScript bridge, ML Kit).
+  - Lint's checks are not run on the release build.
+- **`Tarjim-TV.apk` in the release**, from `tv/` (the laptop program's TV app, 0.4.2,
+  versionCode 5), so a phone used without the laptop can get it. Its screen has a
+  «الإعدادات» button to the TV's accessibility settings, where the second window is switched
+  on without adb.
+- `Terms.kt`: «وابقى» → «وابق» too.
+- versionCode 15.
+
+**Not verified:** the release build on the phone (to be installed when it is built).

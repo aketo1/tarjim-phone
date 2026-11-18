@@ -264,7 +264,7 @@ object Terms
 	private val SHOOT_EN = rx("""\b(?:shoot|shoots|shot|shooting|fire|fires|fired|firing)\b""")
 	/** Arabic patterns the translator gets wrong: (English that must be in the line or null, wrong, right). */
 	private val AR_PATTERNS: List<Triple<Regex?, Regex, String>> = listOf(
-		Triple(null, Regex("(?<![ء-ي])[اإأ]بقى(?![ء-ي])"), "ابق"),  // «إبقى خلفي» → «ابق خلفي»
+		Triple(null, Regex("(?<![ء-ي])([وف]?)[اإأ]بقى(?![ء-ي])"), "$1ابق"),  // «إبقى خلفي» → «ابق خلفي», «وابقى» → «وابق»
 		// "unless they shoot first" → «إلا إذا أطلقوا أولاً»: the fire went missing
 		Triple(SHOOT_EN, Regex("(?<![ء-ي])((?:و|ف)?[أا]طلق(?:وا|ت|نا)?) (?=(?:أولاً|أولا|أولًا|علي(?:ه|ها|هم|نا|ك|كم)|عليّ)(?![ء-ي]))"), "$1 النار ")
 	)
