@@ -379,3 +379,17 @@ Done with the laptop program (its report, section 21, has the measurements). Her
 **Verified:** the app builds; the unit tests pass. **Not verified:** anything on the phone.
 ML Kit's mistakes differ from the laptop model's, so how much these rules help here was not
 measured.
+
+## 16. Words for every game of the library, more GTA VI, and fixes (added 2026-11-18)
+
+Done with the laptop program (its report, section 22, has the details and the measurements).
+Here: `Terms.kt` has the same 13 series and rules (western, gangster, street and old English,
+soldiers' calls, idioms, and each series' own words), keeps a capital when it replaces
+words, and fixes «إبقى» and the lost «النار»; `Gender.kt` makes «إدفعي» masculine and treats
+«اعتني بنفسك» as a command anywhere; `TarjimEngine.kt` writes «يا عم» for "Uncle, ..."; the
+game library has GTA VI's new official names (59, was 35) and the other games' new words.
+(This app gives every name a stand-in already, so the "Majima" fix of the laptop program was
+not needed here.)
+
+**Verified:** the app builds; `TermsTest` and `GenderTest` pass on the computer.
+**Not verified:** anything on the phone.

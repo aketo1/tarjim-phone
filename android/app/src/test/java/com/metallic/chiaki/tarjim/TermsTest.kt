@@ -16,7 +16,7 @@ class TermsTest
 		assertEquals("rdr", Terms.seriesOf("my-rdr", "Red Dead Redemption 2"))
 		assertEquals("yakuza", Terms.seriesOf("x", "Like a Dragon Gaiden"))
 		assertEquals("", Terms.seriesOf("default"))
-		assertEquals("", Terms.seriesOf("bg3", "Baldur's Gate 3"))
+		assertEquals("bg3", Terms.seriesOf("bg3", "Baldur's Gate 3"))
 	}
 
 	private fun rewrites(en: String, series: String, out: String) =
@@ -80,5 +80,78 @@ class TermsTest
 		assertEquals("ابتعد عن الأبواغ.", Terms.fixArabic("ابتعد عن الجراثيم.", "Stay away from the spores.", "tlou"))
 		assertEquals("ابتعد عن الجراثيم.", Terms.fixArabic("ابتعد عن الجراثيم.", "Stay away from the germs.", "tlou"))
 		assertEquals("ابتعد عن الجراثيم.", Terms.fixArabic("ابتعد عن الجراثيم.", "Stay away from the spores.", "rdr"))
+	}
+
+	@Test
+	fun slangAndSeriesWords()
+	{
+		val cases = listOf(
+			Triple("Howdy, partner. Much obliged.", "rdr", "Hello, partner. Thank you very much."),
+			Triple("We gotta high-tail it outta here.", "rdr", "We gotta run away outta here."),
+			Triple("The jig is up, Dutch.", "rdr", "It's over, Dutch."),
+			Triple("Yonder's the cabin.", "rdr", "Over there is the cabin."),
+			Triple("He's packing a heater, be careful.", "lanoire", "He's carrying a gun, be careful."),
+			Triple("Let's sweat him a little.", "lanoire", "Let's pressure him a little."),
+			Triple("He's a made man now.", "mafia", "He's a full member of the mafia now."),
+			Triple("Omertà is everything.", "mafia", "The law of silence is everything."),
+			Triple("Pay the pizzo.", "mafia", "Pay the protection money."),
+			Triple("They whacked him last night.", "mafia", "They killed him last night."),
+			Triple("He ratted us out.", "gta", "He informed on us to the police."),
+			Triple("You strapped?", "gta", "You armed?"),
+			Triple("The opps are rolling up on us.", "gta", "The enemies are coming at us."),
+			Triple("We gotta hit a lick tonight.", "gta", "We gotta do a robbery tonight."),
+			Triple("Nice whip, bro.", "gta", "Nice car, bro."),
+			Triple("Five-O! Run!", "gta", "Police! Run!"),
+			Triple("Hold thy tongue, peasant!", "kcd", "Be quiet, peasant!"),
+			Triple("Methinks he lies.", "kcd", "I think he lies."),
+			Triple("Wait here ere nightfall.", "kcd", "Wait here before nightfall."),
+			Triple("Tango down.", "", "The enemy is dead."),
+			Triple("Roger that.", "", "Understood."),
+			Triple("Clear!", "", "The area is clear!"),
+			Triple("The favela is crawling with gangsters.", "maxpayne", "The favela is full of gangsters."),
+			Triple("The boss wants a word with you.", "", "The boss wants to talk to you."),
+			Triple("Don't worry about me, worry about yourself.", "", "Don't worry about me, take care of yourself."),
+			Triple("The radio is making static again.", "sh", "The radio is making noise again."),
+			Triple("Go to class or you'll get detention.", "bully", "Go to class or you'll get punished after school."),
+			Triple("Don't let them give you a wedgie.", "bully", "Don't let them humiliate you."),
+			Triple("We need to send the calling card.", "persona", "We need to send the warning card."),
+			Triple("Makoto-senpai, wait!", "persona", "Makoto, wait!"),
+			Triple("The lieutenant wants to see you.", "yakuza", "The deputy wants to see you."),
+			Triple("Runners! Get behind me.", "tlou", "Runners are coming! Get behind me.")
+		)
+		for((en, series, out) in cases) assertEquals(out, Terms.rewrite(en, series))
+	}
+
+	@Test
+	fun slangLeftAlone()
+	{
+		for((en, series) in listOf(
+			"He's a self-made man." to "mafia", "He whacked him with a stick." to "bully",
+			"Use your whip on the horse." to "rdr", "I'm strapped for cash." to "gta",
+			"The coast is clear, let's go." to "", "I'll wait here." to "kcd",
+			"The lieutenant wants to see you." to "maxpayne", "We need to send the calling card." to "gta",
+			"Runners are fast." to "tlou", "The static on his shirt." to "rdr"))
+			assertEquals(en, Terms.rewrite(en, series))
+	}
+
+	@Test
+	fun arabicPatterns()
+	{
+		assertEquals("الرانرز قادمون! ابق خلفي.", Terms.fixArabic("الرانرز قادمون! إبقى خلفي.", "Runners are coming! Get behind me."))
+		assertEquals("لا تطلق النار إلا إذا أطلقوا النار أولاً.", Terms.fixArabic("لا تطلق النار إلا إذا أطلقوا أولاً.", "Don't shoot unless they shoot first."))
+		assertEquals("أطلقوا سراحه.", Terms.fixArabic("أطلقوا سراحه.", "They shot him free."))
+		assertEquals("أطلقوا أولاً.", Terms.fixArabic("أطلقوا أولاً.", "They released it first."))
+		assertEquals("persona", Terms.seriesOf("p5r"))
+		assertEquals("kcd", Terms.seriesOf("kcd2"))
+		assertEquals("sh", Terms.seriesOf("my-sh", "Silent Hill 2"))
+	}
+
+	@Test
+	fun genderHamzaAndAnywhere()
+	{
+		assertEquals("ادفع للحماية وإلا سيحرقون متجرك.", Gender.masculinize("إدفعي للحماية وإلا سيحرقون متجرك."))
+		assertEquals("إذا أردت، أذهب معك.", Gender.masculinize("إذا أردت، أذهب معك."))  // "I go" stays
+		assertEquals("لا تقلق بشأني اعتن بنفسك.", Gender.masculinize("لا تقلق بشأني اعتني بنفسك."))
+		assertEquals("لا تقلقي بشأني، اعتني بنفسك.", Gender.feminize("لا تقلقي بشأني، اعتن بنفسك."))
 	}
 }

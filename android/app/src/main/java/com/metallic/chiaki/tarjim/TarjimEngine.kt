@@ -681,6 +681,21 @@ class TarjimEngine(private val context: Context, private val connectInfo: Connec
 			return r1.containsMatchIn(text) || r2.containsMatchIn(text) || r3.containsMatchIn(text)
 		}
 
+		/** "Uncle, wake up" → «يا عم، استيقظ», not «العم، استيقظ»: a name or title written with
+		 * «ال», spoken to at the start of the line (not a group: "Wolves, listen"). */
+		private fun vocativeTitle(arabic: String, english: String, matched: List<Triple<String, String, Regex>>): String
+		{
+			for((en, ar, _) in matched)
+			{
+				if(!ar.startsWith("ال") || ' ' in ar || (en.endsWith("s") && !en.endsWith("ss"))) continue
+				if(!Regex("^[\\s\"'-]*${Regex.escape(en)}\\s*,", RegexOption.IGNORE_CASE).containsMatchIn(english)) continue
+				// the translator sometimes brackets the name: «(العم)، انهض»
+				val m = Regex("^\\s*[(«\"]?${Regex.escape(ar)}[)»\"]?(\\s*[،,])").find(arabic) ?: continue
+				return "يا " + ar.substring(2) + m.groupValues[1] + arabic.substring(m.range.last + 1)
+			}
+			return arabic
+		}
+
 		fun translate(line: String, lk: Look): String
 		{
 			val gameSeries = series
@@ -732,6 +747,7 @@ class TarjimEngine(private val context: Context, private val connectInfo: Connec
 			// names the translator left in Latin letters
 			for((_, ar, pattern) in matched) arabic = pattern.replace(arabic, Regex.escapeReplacement(ar))
 			arabic = Terms.commandsNotNouns(arabic, english)
+			arabic = vocativeTitle(arabic, english, matched)
 			if(allFemale)
 			{
 				if(matched.any { isVocative(english, it.first) })

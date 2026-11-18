@@ -8,9 +8,9 @@ package com.metallic.chiaki.tarjim
  * "Kiryu-chan"... The translator knows plain English, so these are put into plain English
  * before it reads the line, and the few Arabic words it still gets wrong are put right after.
  *
- * Every game gets GENERAL; a series (Red Dead, GTA, The Last of Us, Yakuza / Like a Dragon)
- * gets its own words as well. The same rules as the laptop program's laptop/tarjim/terms.py:
- * keep the two alike.
+ * Every game gets GENERAL (western, gangster, street and old English, soldiers' calls,
+ * idioms); every game of the library belongs to a series that gets its own words as well.
+ * The same rules as the laptop program's laptop/tarjim/terms.py: keep the two alike.
  */
 object Terms
 {
@@ -19,10 +19,22 @@ object Terms
 		"gta" to setOf("gta-sa", "gta4", "gta5", "gta6"),
 		"tlou" to setOf("tlou1", "tlou2"),
 		"yakuza" to setOf("yakuza0", "yakuza-kiwami", "yakuza-kiwami2", "yakuza3", "yakuza4", "yakuza5", "yakuza6",
-			"lad7", "lad8", "lad-gaiden", "lad-pirate")
+			"lad7", "lad8", "lad-gaiden", "lad-pirate"),
+		"sh" to setOf("sh2r"),
+		"maxpayne" to setOf("max-payne-3"),
+		"lanoire" to setOf("la-noire"),
+		"bully" to setOf("bully"),
+		"bg3" to setOf("bg3"),
+		"ff7" to setOf("ff7r"),
+		"kcd" to setOf("kcd2"),
+		"mafia" to setOf("mafia-toc"),
+		"persona" to setOf("p5r")
 	)
 	private val TITLE_HINTS = listOf("red dead" to "rdr", "grand theft auto" to "gta", "gta" to "gta",
-		"last of us" to "tlou", "yakuza" to "yakuza", "like a dragon" to "yakuza")
+		"last of us" to "tlou", "yakuza" to "yakuza", "like a dragon" to "yakuza", "silent hill" to "sh",
+		"max payne" to "maxpayne", "l.a. noire" to "lanoire", "la noire" to "lanoire", "bully" to "bully",
+		"canis canem" to "bully", "baldur" to "bg3", "final fantasy" to "ff7", "kingdom come" to "kcd",
+		"mafia" to "mafia", "persona" to "persona")
 
 	/** The series of a game profile ("" for none): by the library's id, else by its title. */
 	fun seriesOf(profile: String, title: String = ""): String
@@ -43,8 +55,9 @@ object Terms
 	private const val LAW_HUNTS = "(?:after|coming|here|onto|on to|on our|on your|on his|on their|on my|close|everywhere|outside|" +
 		"waiting|chasing|looking for|searching|hunting|find|finds|found|catch|catches|caught|get|gets|got|" +
 		"show up|shows up|showed up|turn up|turns up|turned up|arrive|arrives|arrived|all over)"
+	private const val OBJ = "(us|him|her|them|me|you)"
 
-	/** Every game: western and crime-game words, and game words the translator reads as other words. */
+	/** Every game: western and crime-game words, slang, old English, soldiers' calls, idioms. */
 	private val GENERAL: List<Pair<Regex, String>> = listOf(
 		rx("""\bhog-?ties? (him|her|them|it|me|us)\b""") to "tie $1 up",
 		rx("""\bhog-?ties? (the|that|this|a|an) (\w+)\b""") to "tie up $1 $2",
@@ -91,7 +104,85 @@ object Terms
 		rx("""\bheld up (the|a|that) (stagecoach|coach|train|bank|store|shop|wagon|stage)\b""") to "robbed $1 $2",
 		rx("""\bhold(?:ing)? up (the|a|that) (stagecoach|coach|train|bank|store|shop|wagon|stage)\b""") to "rob $1 $2",
 		rx("""\b(run|runs|ran|running) off\b(?! (?:the|a) (?:road|bridge|cliff|edge|track))""") to "$1 away",
-		rx("""\b(the|a|that|your) gunsmith\b""") to "$1 gun shop"
+		rx("""\b(the|a|that|your) gunsmith\b""") to "$1 gun shop",
+		// western speech
+		rx("""\bhowdy\b""") to "hello",
+		rx("""\bmuch obliged\b""") to "thank you very much",
+		rx("""\b(?:skedaddle|vamoose)\b""") to "run away",
+		rx("""\bhigh-?tailed it\b""") to "ran away",
+		rx("""\bhigh-?tail(?:ing)? it\b""") to "run away",
+		rx("""\bthe jig(?:'s| is) up\b""") to "it's over",
+		rx("""\b(?:greenhorn|tenderfoot)s\b""") to "beginners",
+		rx("""\b(?:greenhorn|tenderfoot)\b""") to "beginner",
+		rx("""\byonder's\b""") to "over there is",
+		rx("""\b(?:over |out )?yonder\b""") to "over there",
+		// gangster and police slang
+		rx("""\bpacking heat\b""") to "carrying a gun",
+		rx("""\bpacking (a|his|her|their|the|my|your) (?:heater|gat|rod|roscoe|piece|gun|pistol|revolver)\b""") to "carrying $1 gun",
+		rx("""\b(has|had|got|with|pulled|pulls|drew|draws) (a|his|her|their|the|my|your) (?:heater|gat|roscoe|piece)\b""") to "$1 $2 gun",
+		rx("""(?<!self-)\bmade men\b""") to "full members of the mafia",
+		rx("""(?<!self-)\ba made man\b""") to "a full member of the mafia",
+		rx("""\b(?:rub|bump) $OBJ (?:out|off)\b""") to "kill $1",
+		rx("""\b(?:rubbed|bumped) $OBJ (?:out|off)\b""") to "killed $1",
+		rx("""\brub out (the|that|this) (\w+)\b""") to "kill $1 $2",
+		rx("""\brubbed out (the|that|this) (\w+)\b""") to "killed $1 $2",
+		rx("""\bsleeps with the fishes\b""") to "is dead at the bottom of the sea",
+		rx("""\bsleeping with the fishes\b""") to "dead at the bottom of the sea",
+		rx("""\bsleep with the fishes\b""") to "be dead at the bottom of the sea",
+		rx("""\bomert[àa]\b""") to "the law of silence",
+		rx("""\bpizzo\b""") to "protection money",
+		rx("""\bpicciotti\b""") to "young men",
+		rx("""\bpicciotto\b""") to "young man",
+		rx("""\bconsiglieres?\b""") to "advisor",
+		rx("""\bspeakeasies\b""") to "secret bars",
+		rx("""\bspeakeasy\b""") to "secret bar",
+		rx("""\b(?:hooch|moonshine)\b""") to "illegal alcohol",
+		rx("""\bbootleg (liquor|booze|whiskey|alcohol)\b""") to "illegal $1",
+		rx("""\bsweat (him|her|them)\b(?! out)""") to "pressure $1",
+		rx("""\brats? $OBJ out\b""") to "inform on $1 to the police",
+		rx("""\bratted $OBJ out\b""") to "informed on $1 to the police",
+		rx("""\bratting $OBJ out\b""") to "informing on $1 to the police",
+		rx("""\bsquealed on $OBJ\b""") to "informed on $1 to the police",
+		rx("""\bsqueals? on $OBJ\b""") to "inform on $1 to the police",
+		// street slang
+		rx("""\b(you|you're|he's|she's|they're|we're|I'm|are you|is he|is she|y'all) strapped\b(?! for)""") to "$1 armed",
+		rx("""\bopps\b""") to "enemies",
+		rx("""\b(?:rolling|rollin') up on\b""") to "coming at",
+		rx("""\brolled up on\b""") to "came at",
+		rx("""\bhit (?:a|another|one more|this|that) lick\b""") to "do a robbery",
+		rx("""\bfive-o\b""") to "police",
+		rx("""\btrap houses?\b""") to "drug house",
+		rx("""\bgive $OBJ (?:a )?wedgies?\b""") to "humiliate $1",
+		rx("""\bgives $OBJ (?:a )?wedgies?\b""") to "humiliates $1",
+		rx("""\bgave $OBJ (?:a )?wedgies?\b""") to "humiliated $1",
+		rx("""\bgiving $OBJ (?:a )?wedgies?\b""") to "humiliating $1",
+		// old English (Kingdom Come, Baldur's Gate and the like)
+		rx("""\bhold (?:thy|your|thine) tongue\b""") to "be quiet",
+		rx("""\bprithee\b""") to "please",
+		rx("""\bmethinks\b""") to "I think",
+		rx("""\b(?:mayhap|perchance)\b""") to "maybe",
+		rx("""\bverily\b""") to "truly",
+		rx("""\bforsooth\b""") to "indeed",
+		rx("""\bnaught\b""") to "nothing",
+		rx("""\b(?:m'lord|milord)\b""") to "my lord",
+		rx("""\b(?:m'lady|milady)\b""") to "my lady",
+		rx("""\bwherefore\b""") to "why",
+		rx("""\bwhence\b""") to "from where",
+		rx("""\bthither\b""") to "there",
+		rx("""\bhither\b""") to "here",
+		// soldiers' calls
+		rx("""\btango down\b""") to "the enemy is dead",
+		rx("""(?<=, )moving (to|up|out|in)\b""") to "we're moving $1",
+		rx("""^man down\b""") to "a man has fallen",
+		rx("""\bfrag out\b""") to "grenade",
+		rx("""\b(?:roger|copy) that\b""") to "understood",
+		rx("""^move out\b""") to "let's go",
+		rx("""^(?:all |room |area )?clear(?=!*$)""") to "the area is clear",
+		// idioms
+		rx("""\b(is|are|was|were|it's|it is) (?:crawling|swarming) with\b""") to "$1 full of",
+		rx("""\b(want|wants|wanted|need|needs|needed|'d like|would like) a (?:quick )?word with (you|him|her|them|me|us)\b""") to "$1 to talk to $2",
+		rx("""\b(want|wants|wanted|need|needs|needed|'d like|would like) a (?:quick )?word\b""") to "$1 to talk to you",
+		rx("""\bworry about yourself\b""") to "take care of yourself"
 	)
 	private val ANY = Regex(GENERAL.joinToString("|") { "(?:${it.first.pattern})" }, RegexOption.IGNORE_CASE)
 
@@ -102,7 +193,44 @@ object Terms
 		"under", "follow", "following", "respect", "it's", "is", "that's", "was", "uphold", "upholding",
 		"enforce", "I'm", "am", "letter of", "according to", "eyes of").joinToString("") { "(?<!\\b$it )" }
 
+	private val HONORIFICS = listOf(
+		// "-san" stays: without it the translator takes a name like "Majima" for a woman's
+		SeriesRule(rx("""\b([A-Z][a-z]+)-(?:chan|kun|sama|senpai|sensei|dono|han|bo)\b""", ignoreCase = false), "$1"),
+		SeriesRule(rx("""\b(?:nii-?san|nii-?chan|onii-?san|onii-?chan|aniki)\b"""), "big brother"),
+		SeriesRule(rx("""\b(?:nee-?san|onee-?san|onee-?chan|ane-?san)\b"""), "big sister")
+	)
+	/** "whacked him" is killed him in a crime story, hit him elsewhere. */
+	private val KILLED = listOf(
+		SeriesRule(rx("""\bwhacks? (him|her|them|you|me|us|the \w+|that \w+)\b"""), "kill $1"),
+		SeriesRule(rx("""\bwhacked (him|her|them|you|me|us|the \w+|that \w+)\b"""), "killed $1"),
+		SeriesRule(rx("""\bwhacking $OBJ\b"""), "killing $1"),
+		SeriesRule(rx("""\b(got|get|gets|getting) whacked\b"""), "$1 killed")
+	)
+	private val ERE = listOf(SeriesRule(rx("""\bere\b"""), "before"))
+
 	private val SERIES: Map<String, List<SeriesRule>> = mapOf(
+		"gta" to KILLED + listOf(
+			SeriesRule(rx("""\b(nice|new|sweet|fancy|my|your|his|her|that|this) whip\b"""), "$1 car"),
+			SeriesRule(rx("""\bcap (him|her|them|you|that \w+)\b"""), "shoot $1"),
+			SeriesRule(rx("""\bcapped (him|her|them|you|that \w+)\b"""), "shot $1")
+		),
+		"mafia" to KILLED,
+		"lanoire" to KILLED,
+		"maxpayne" to KILLED,
+		"persona" to HONORIFICS + listOf(
+			SeriesRule(rx("""\bcalling cards\b"""), "warning cards"),
+			SeriesRule(rx("""\bcalling card\b"""), "warning card")
+		),
+		"sh" to listOf(SeriesRule(rx("""\bstatic\b"""), "noise")),  // the radio's warning
+		"bully" to listOf(
+			SeriesRule(rx("""\b(get|got|getting|gets) detention\b"""), "$1 punished after school"),
+			SeriesRule(rx("""\bdetention\b"""), "after-school punishment")
+		),
+		"kcd" to ERE,
+		"bg3" to ERE,
+		"tlou" to listOf(
+			SeriesRule(rx("""^(Runners|Clickers|Stalkers|Bloaters|Shamblers|Infected)!"""), "$1 are coming!")
+		),
 		"rdr" to listOf(
 			// in a western "the law" is the lawmen, except "against the law", "it's the law", ...
 			SeriesRule(rx("""$LAW_KEEP\bthe law\b(?!\s+(?:of|says|said|is clear|and order|is the law))"""), "the police"),
@@ -112,12 +240,10 @@ object Terms
 			SeriesRule(rx("""\b(a|the|any|your|that) fence\b"""), "$1 stolen goods dealer", SELLING),
 			SeriesRule(rx("""\bfence (it|them|this|that|these|those)\b(?! off| in)"""), "sell $1 as stolen goods")
 		),
-		"yakuza" to listOf(
-			// "-san" stays: without it the translator takes a name like "Majima" for a woman's
-			SeriesRule(rx("""\b([A-Z][a-z]+)-(?:chan|kun|sama|senpai|sensei|dono|han|bo)\b""", ignoreCase = false), "$1"),
-			SeriesRule(rx("""\b(?:nii-?san|nii-?chan|onii-?san|aniki)\b"""), "big brother"),
-			SeriesRule(rx("""\b(?:nee-?san|onee-?san|ane-?san)\b"""), "big sister"),
+		"yakuza" to HONORIFICS + listOf(
 			SeriesRule(rx("""\b(?:oyaji|oyassan)\b"""), "old man"),
+			SeriesRule(rx("""\blieutenants\b"""), "deputies"),
+			SeriesRule(rx("""\blieutenant\b"""), "deputy"),
 			SeriesRule(rx("""\boyabun\b"""), "boss"),
 			SeriesRule(rx("""\bkyodai\b"""), "brother"),
 			SeriesRule(rx("""\bpatriarch of\b"""), "head of"),
@@ -135,14 +261,31 @@ object Terms
 			Triple(rx("""\bspores?\b"""), "جراثيم", "أبواغ")
 		)
 	)
+	private val SHOOT_EN = rx("""\b(?:shoot|shoots|shot|shooting|fire|fires|fired|firing)\b""")
+	/** Arabic patterns the translator gets wrong: (English that must be in the line or null, wrong, right). */
+	private val AR_PATTERNS: List<Triple<Regex?, Regex, String>> = listOf(
+		Triple(null, Regex("(?<![ء-ي])[اإأ]بقى(?![ء-ي])"), "ابق"),  // «إبقى خلفي» → «ابق خلفي»
+		// "unless they shoot first" → «إلا إذا أطلقوا أولاً»: the fire went missing
+		Triple(SHOOT_EN, Regex("(?<![ء-ي])((?:و|ف)?[أا]طلق(?:وا|ت|نا)?) (?=(?:أولاً|أولا|أولًا|علي(?:ه|ها|هم|نا|ك|كم)|عليّ)(?![ء-ي]))"), "$1 النار ")
+	)
+
+	private val GROUP_REF = Regex("""\$(\d)""")
+
+	/** Replace, keeping a capital where the replaced words had one ("Howdy" → "Hello"). */
+	private fun sub(r: Regex, repl: String, text: String): String = r.replace(text) { m ->
+		var out = GROUP_REF.replace(repl) { g -> m.groupValues.getOrElse(g.groupValues[1].toInt()) { "" } }
+		if(m.value.isNotEmpty() && m.value[0].isUpperCase() && out.isNotEmpty() && out[0].isLowerCase())
+			out = out[0].uppercaseChar() + out.substring(1)
+		out
+	}
 
 	/** The line in plain English for the translator: game words, then the series' words. */
 	fun rewrite(english: String, series: String = ""): String
 	{
 		var s = english
-		if(ANY.containsMatchIn(s)) for((r, repl) in GENERAL) s = r.replace(s, repl)
+		if(ANY.containsMatchIn(s)) for((r, repl) in GENERAL) s = sub(r, repl, s)
 		for(rule in SERIES[series].orEmpty())
-			if(rule.condition == null || rule.condition.containsMatchIn(s)) s = rule.rx.replace(s, rule.repl)
+			if(rule.condition == null || rule.condition.containsMatchIn(s)) s = sub(rule.rx, rule.repl, s)
 		return s
 	}
 
@@ -152,6 +295,8 @@ object Terms
 		for(group in if(series.isEmpty()) listOf("") else listOf("", series))
 			for((cond, wrong, right) in AR_FIXES[group].orEmpty())
 				if(wrong in s && (cond == null || cond.containsMatchIn(english))) s = s.replace(wrong, right)
+		for((cond, r, right) in AR_PATTERNS)
+			if((cond == null || cond.containsMatchIn(english)) && r.containsMatchIn(s)) s = r.replace(s, right)
 		return s
 	}
 

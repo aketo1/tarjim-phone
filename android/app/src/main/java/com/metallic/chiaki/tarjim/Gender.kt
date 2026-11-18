@@ -105,6 +105,15 @@ object Gender
 	private val HARAKAT = Regex("[\\u064e\\u064f\\u0650\\u0652\\u0670]")
 	private val PRESENT = Regex("(?<![\\u0621-\\u064d\\u0651])(" + PRESENT_FEM.keys.sortedByDescending { it.length }.joinToString("|") + ")(?![\\u0621-\\u064d\\u0651])")
 
+	/** A command in the table, also when the translator wrote its first alef with a hamza below
+	 * («إدفعي»): a command never starts with «إ», while «أ» can be "I" («أذهب», I go). */
+	private fun look(table: Map<String, String>, tok: String): String? =
+		table[tok] ?: if(tok.startsWith("إ")) table["ا" + tok.substring(1)] else null
+
+	/** Commands that are commands wherever they stand, even when the comma before them is lost. */
+	private val ANYWHERE = mapOf("اعتني بنفسك" to "اعتن بنفسك", "اهتمي بنفسك" to "اهتم بنفسك",
+		"انتبهي لنفسك" to "انتبه لنفسك", "حافظي على نفسك" to "حافظ على نفسك")
+
 	private fun swap(text: String, table: Map<String, String>, ctx: Map<String, Ctx>, prohibit: Map<String, String>): String
 	{
 		val tokens = TOKEN.findAll(text).map { it.value }.toList()
@@ -124,11 +133,11 @@ object Gender
 				val p = prohibit[tok]
 				if(p != null) { out.append(p); atCmd = false; afterNot = false; continue }
 			}
-			val joined = if(tok[0] in "وف" && tok.length > 3) table[tok.substring(1)] else null
+			val joined = if(tok[0] in "وف" && tok.length > 3) look(table, tok.substring(1)) else null
 			var new: String? = null
 			if(atCmd)
 			{
-				new = table[tok] ?: joined?.let { tok[0] + it }
+				new = look(table, tok) ?: joined?.let { tok[0] + it }
 				if(new == null)
 				{
 					val c = ctx[tok]
@@ -154,10 +163,17 @@ object Gender
 	fun masculinize(arabic: String): String
 	{
 		if('ي' !in arabic) return arabic
-		val s = swap(HARAKAT.replace(spelling(arabic), ""), toMasc, ctxMasc, prohibitMasc)
+		var a = spelling(arabic)
+		for((fem, masc) in ANYWHERE) if(fem in a) a = a.replace(fem, masc)
+		val s = swap(HARAKAT.replace(a, ""), toMasc, ctxMasc, prohibitMasc)
 		return if("ين" in s) PRESENT.replace(s) { PRESENT_FEM[it.value] ?: it.value } else s
 	}
 
 	/** Commands said to a man, turned to a woman (when a woman is the one spoken to). */
-	fun feminize(arabic: String): String = spelling(swap(HARAKAT.replace(arabic, ""), toFem, ctxFem, prohibitFem))
+	fun feminize(arabic: String): String
+	{
+		var s = spelling(swap(HARAKAT.replace(arabic, ""), toFem, ctxFem, prohibitFem))
+		for((fem, masc) in ANYWHERE) if(masc in s && fem !in s) s = s.replace(masc, fem)
+		return s
+	}
 }

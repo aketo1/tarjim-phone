@@ -63,6 +63,9 @@
     {"en": "Jocks", "ar": "الجوكس"},
     {"en": "Nerds", "ar": "النيردز"},
     {"en": "Bullies", "ar": "المتنمرون"},
-    {"en": "Townies", "ar": "التاونيز"}
+    {"en": "Townies", "ar": "التاونيز"},
+    {"en": "prefects", "ar": "المراقبون"},
+    {"en": "prefect", "ar": "المراقب"},
+    {"en": "jocks", "ar": "الجوكس"}
   ]
 }
