@@ -755,6 +755,13 @@ class TarjimEngine(private val context: Context, private val connectInfo: Connec
 					arabic = Gender.feminize(arabic)  // every common command said to her
 					for((rx, repl) in FEM_VOCATIVE_FIXES) arabic = rx.replace(arabic, repl)
 				}
+				else
+				{
+					// "Buy Maria a ring", "Don't you like Maria?": she is named, not spoken to, so the
+					// one spoken to is a man by default
+					for((rx, repl) in MASC_DEFAULT_FIXES) arabic = rx.replace(arabic, repl)
+					arabic = Gender.masculinize(arabic)
+				}
 				if(matched.size >= 2)
 					for((rx, repl) in FEM_PLURAL_FIXES) arabic = rx.replace(arabic, repl)
 			}

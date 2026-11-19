@@ -463,3 +463,14 @@ The page's pictures were synced from the laptop program (section 27 of its repor
 - The box covers are a real 600 x 900.
 
 The art is 12 MB instead of 6.8 MB. When the page runs against the laptop, it asks for a live picture as wide as the screen. This app's own picture (`TarjimEngine.frameJpeg`) stays 960 x 540.
+
+## 22. Lessons from a GTA VI session (added 2026-11-19)
+
+The laptop program's report, section 28, describes the session. The rules learned there are also in this app:
+- `Terms.kt` has the same street talk and swearing, GTA's own words, button prompts and mission goals as commands, and the bachelor party fix.
+- `TarjimEngine.kt`: a woman who is named but not spoken to leaves the one spoken to masculine.
+- The GTA VI list (`assets/packs/gta6.json`) has 44 more names and places.
+
+The laptop's new filter for all-caps captions is not in this app: it reads text another way.
+
+**Not verified:** the app was compiled and its rule tests passed before the last small change (narrower "that shit", "bro" → "brother", the masculine default for any named woman not spoken to). A second local build was stopped when the computer ran low on memory; GitHub's build checks it.

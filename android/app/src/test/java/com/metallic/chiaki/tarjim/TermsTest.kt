@@ -100,7 +100,7 @@ class TermsTest
 			Triple("You strapped?", "gta", "You armed?"),
 			Triple("The opps are rolling up on us.", "gta", "The enemies are coming at us."),
 			Triple("We gotta hit a lick tonight.", "gta", "We gotta do a robbery tonight."),
-			Triple("Nice whip, bro.", "gta", "Nice car, bro."),
+			Triple("Nice whip, bro.", "gta", "Nice car, brother."),
 			Triple("Five-O! Run!", "gta", "Police! Run!"),
 			Triple("Hold thy tongue, peasant!", "kcd", "Be quiet, peasant!"),
 			Triple("Methinks he lies.", "kcd", "I think he lies."),

@@ -182,7 +182,63 @@ object Terms
 		rx("""\b(is|are|was|were|it's|it is) (?:crawling|swarming) with\b""") to "$1 full of",
 		rx("""\b(want|wants|wanted|need|needs|needed|'d like|would like) a (?:quick )?word with (you|him|her|them|me|us)\b""") to "$1 to talk to $2",
 		rx("""\b(want|wants|wanted|need|needs|needed|'d like|would like) a (?:quick )?word\b""") to "$1 to talk to you",
-		rx("""\bworry about yourself\b""") to "take care of yourself"
+		rx("""\bworry about yourself\b""") to "take care of yourself",
+		rx("""\bcatch you on the flip(?: ?side)?\b""") to "see you later",
+		rx("""\bsay less\b""") to "understood",
+		rx("""^do what now\?""") to "what do you mean?",
+		rx("""\b(?:it'?ll|it will) be a cold day in (?:\w+ )?hell(?=[.!?]|$)""") to "that will never happen",
+		rx("""\b(he|she|it)(?:'s| has| is) got another thing coming\b""") to "$1 is badly mistaken",
+		rx("""\b(you|they|we)(?:'ve| have)? got another thing coming\b""") to "$1 are badly mistaken",
+		rx("""\bpull(?:ed)? the plug on\b""") to "cut ties with",
+		rx("""\bpulling the plug on\b""") to "cutting ties with",
+		rx("""\bpull up (?:in )?front of\b""") to "stop in front of",
+		rx("""\bblackball(ed|ing)?\b""") to "blacklist$1",
+		rx("""\bpoof!""") to "just like that!",
+		rx("""\bwith your bun in her oven\b""") to "pregnant with your baby",
+		rx("""\b(?:a|your|his|my) bun in (?:the|her) oven\b""") to "a baby on the way",
+		rx("""\bhang(ing)? out with\b""") to "spend$1 time with",
+		// someone who stops answering: "she ghosted me"
+		rx("""\bghosted (me|you|him|her|us|them)\b""") to "cut off all contact with $1",
+		rx("""\bghosting (me|you|him|her|us|them)\b""") to "cutting off all contact with $1",
+		rx("""\bghost (me|you|him|her|us|them)\b""") to "cut off all contact with $1",
+		rx("""\bgot ghosted\b""") to "was abandoned",
+		rx("""\bpeaced out\b""") to "left",
+		rx("""\bhook (me|us) up(?=[?!.,]|$)""") to "introduce $1 to someone",
+		rx("""\bhooking up with\b""") to "dating",
+		rx("""\bhooked up with\b""") to "dated",
+		rx("""\bhook up with\b""") to "date",
+		// "I got you": I understand, or I'm here for you, not "I caught you"
+		rx("""(?:^|(?<=[.!?] ))I got you(?=[.!]|$)""") to "I'm with you",
+		rx("""\bmy guy\b""") to "my friend",
+		rx("""(?<=[,!] )bro(?:-bro)?(?=[.!?,]|$)""") to "brother",
+		rx("""\bdude\b""") to "man",
+		// "baby" said to someone, not a child: "Drinks for everyone, baby!"
+		rx("""(?<=[,!] )baby(?=[.!?,]|$)""") to "darling",
+		rx("""^baby(?=, )""") to "darling",
+		// swearing the translator takes word for word
+		rx("""\bget fucked\b""") to "go to hell",
+		rx("""\byou fuck(?=[!.?,]|$)""") to "you bastard",
+		rx("""\bfuckin'? A\b""") to "absolutely",
+		rx("""\b(really|just|so|even) fuckin'?\s+(?=(?:you|me|him|her|it|us|them)\b)""") to "$1 ",
+		rx("""\byou fuckin'? (understand|hear|listen|get|know|think|want|see)\b""") to "you $1",
+		rx("""\bfuckin'(?=\s)""") to "fucking",
+		rx("""(?:^|(?<=[.!?\u2026] ))((?:oh|ah|aw|aww|ooh|uh),? )?shit(?=[!.\u2026,]|$)""") to "$1damn",
+		rx("""\bholy shit\b""") to "oh my God",
+		rx("""^no shit\b""") to "obviously",
+		rx("""\bget (my|your|his|her|our|their) shit together\b""") to "get $1 life in order",
+		rx("""\b(my|your|his|her|our|their) shit\b""") to "$1 stuff",
+		rx("""\bpiece of shit (car|truck|boat|phone|place|house|gun)\b""") to "junk $1",
+		rx("""\bpiece of shit\b""") to "bastard",
+		rx("""\b(is|'s|are|'re) shitting (?:his|her|their|your) pants\b""") to "$1 terrified",
+		rx("""\bdon't shit yourself\b""") to "don't panic",
+		// button prompts: the button is a picture the reader leaves out, "Hold to sprint"
+		rx("""\b(Press|Hold|Use)to\b""") to "$1 to",
+		rx("""^Hold(?= (?:[LR][123]|or|and|to|down)\b)""") to "Press and hold",
+		rx("""^Press to\b""") to "Press the button to",
+		rx("""^Release to\b""") to "Let go of the button to",
+		rx("""\bloadout\b""") to "equipment",
+		rx("""^Keep (left|right)\b""") to "stay on the $1",
+		rx("""^Stash (the|your)\b""") to "hide $1"
 	)
 	private val ANY = Regex(GENERAL.joinToString("|") { "(?:${it.first.pattern})" }, RegexOption.IGNORE_CASE)
 
@@ -211,6 +267,21 @@ object Terms
 	private val SERIES: Map<String, List<SeriesRule>> = mapOf(
 		"gta" to KILLED + listOf(
 			SeriesRule(rx("""\b(nice|new|sweet|fancy|my|your|his|her|that|this) whip\b"""), "$1 car"),
+			SeriesRule(rx("""\bchicks\b"""), "girls"),
+			SeriesRule(rx("""\bchick\b"""), "girl"),
+			SeriesRule(rx("""\b(so|real|really|pretty|damn|fucking) dope\b"""), "$1 cool"),
+			SeriesRule(rx("""\bdope!"""), "cool!"),
+			SeriesRule(rx("""\b(?:a )?lame(?=[,.!?]|$)"""), "boring"),
+			SeriesRule(rx("""\b(?:yeyo|yayo)\b"""), "cocaine"),
+			SeriesRule(rx("""\bsome blanco\b"""), "some cocaine"),
+			SeriesRule(rx("""\bstay on his ass\b"""), "stay right behind him"),
+			SeriesRule(rx("""\bstay on her ass\b"""), "stay right behind her"),
+			SeriesRule(rx("""\bstay on their ass(?:es)?\b"""), "stay right behind them"),
+			SeriesRule(rx("""\bthe Keys\b""", ignoreCase = false), "the islands"),  // Leonida's islands, not keys
+			SeriesRule(rx("""\ball over the keys\b"""), "all over the islands"),
+			SeriesRule(rx("""(?<=, )(?:dog|dawg)(?=[.!?,]|$)"""), "man"),
+			SeriesRule(rx("""(?<=, )mama(?=[.!?,]|$)"""), "girl"),
+			SeriesRule(rx("""^Chase(?= [A-Z]|$)""", ignoreCase = false), "Pursue"),  // a mission goal, not a name
 			SeriesRule(rx("""\bcap (him|her|them|you|that \w+)\b"""), "shoot $1"),
 			SeriesRule(rx("""\bcapped (him|her|them|you|that \w+)\b"""), "shot $1")
 		),
@@ -255,7 +326,11 @@ object Terms
 
 	/** Arabic the translator still gets wrong: (English that must be in the line or null, wrong, right). */
 	private val AR_FIXES: Map<String, List<Triple<Regex?, String, String>>> = mapOf(
-		"" to listOf(Triple(null, "بطاقات التموينية", "بطاقات التموين")),
+		"" to listOf(
+			Triple(null, "بطاقات التموينية", "بطاقات التموين"),
+			Triple(rx("""\bbachelor part(?:y|ies)\b"""), "حزب البكالوريوس", "حفلة توديع العزوبية"),
+			Triple(rx("""\bbachelor part(?:y|ies)\b"""), "حفلة البكالوريوس", "حفلة توديع العزوبية")
+		),
 		"tlou" to listOf(
 			Triple(rx("""\bspores?\b"""), "الجراثيم", "الأبواغ"),
 			Triple(rx("""\bspores?\b"""), "جراثيم", "أبواغ")
@@ -329,7 +404,7 @@ object Terms
 		"clean" to mapOf("تنظيف" to "نظّف"),
 		"brush" to mapOf("تنظيف" to "نظّف"),
 		"save" to mapOf("حفظ" to "احفظ", "إنقاذ" to "أنقذ"),
-		"rescue" to mapOf("إنقاذ" to "أنقذ"),
+		"rescue" to mapOf("إنقاذ" to "أنقذ", "الإنقاذ" to "أنقذ"),
 		"collect" to mapOf("جمع" to "اجمع"),
 		"gather" to mapOf("جمع" to "اجمع"),
 		"carry" to mapOf("حمل" to "احمل"),
@@ -347,7 +422,7 @@ object Terms
 		"return" to mapOf("إعادة" to "أعد", "العودة" to "عد"),
 		"deliver" to mapOf("تسليم" to "سلّم"),
 		"hand" to mapOf("تسليم" to "سلّم"),
-		"drive" to mapOf("قيادة" to "قد"),
+		"drive" to mapOf("قيادة" to "قد", "القيادة" to "قد"),
 		"draw" to mapOf("سحب" to "اسحب"),
 		"pull" to mapOf("سحب" to "اسحب"),
 		"take" to mapOf("أخذ" to "خذ", "اتخاذ" to "خذ"),
@@ -357,7 +432,7 @@ object Terms
 		"leave" to mapOf("ترك" to "اترك", "مغادرة" to "غادر"),
 		"shoot" to mapOf("إطلاق" to "أطلق"),
 		"fire" to mapOf("إطلاق" to "أطلق"),
-		"find" to mapOf("العثور" to "اعثر", "إيجاد" to "جد"),
+		"find" to mapOf("العثور" to "اعثر", "إيجاد" to "جد", "البحث" to "ابحث"),
 		"locate" to mapOf("تحديد" to "حدد"),
 		"wait" to mapOf("الانتظار" to "انتظر", "انتظار" to "انتظر"),
 		"check" to mapOf("التحقق" to "تحقق", "فحص" to "افحص"),
@@ -390,7 +465,25 @@ object Terms
 		"swim" to mapOf("السباحة" to "اسبح"),
 		"track" to mapOf("تعقب" to "تعقب", "تتبع" to "تتبع"),
 		"sneak" to mapOf("التسلل" to "تسلل"),
-		"climb" to mapOf("تسلق" to "تسلق")
+		"climb" to mapOf("تسلق" to "تسلق"),
+		"escort" to mapOf("مرافقة" to "رافق"),
+		"choose" to mapOf("اختيار" to "اختر"),
+		"select" to mapOf("اختيار" to "اختر", "تحديد" to "حدد"),
+		"sit" to mapOf("الجلوس" to "اجلس", "جلوس" to "اجلس"),
+		"move" to mapOf("التحرك" to "تحرك", "تحريك" to "حرّك", "نقل" to "انقل"),
+		"dance" to mapOf("الرقص" to "ارقص"),
+		"examine" to mapOf("فحص" to "افحص"),
+		"pick" to mapOf("التقاط" to "التقط", "إلتقاط" to "التقط", "اختيار" to "اختر"),
+		"deal" to mapOf("التعامل" to "تعامل"),
+		"pursue" to mapOf("مطاردة" to "طارد", "ملاحقة" to "لاحق"),
+		"chase" to mapOf("مطاردة" to "طارد", "ملاحقة" to "لاحق"),
+		"change" to mapOf("تغيير" to "غيّر", "التغيير" to "غيّر"),
+		"visit" to mapOf("زيارة" to "زر"),
+		"enter" to mapOf("الدخول" to "ادخل", "دخول" to "ادخل"),
+		"equip" to mapOf("تجهيز" to "جهّز"),
+		"investigate" to mapOf("التحقيق" to "حقق"),
+		"order" to mapOf("طلب" to "اطلب"),
+		"spend" to mapOf("قضاء" to "اقض")
 	)
 	/** The word after the first one shows it is a noun, not a command: "Escape is impossible". */
 	private val NOT_A_COMMAND_NEXT = setOf("is", "was", "are", "were", "will", "would", "can", "could", "should", "has", "have",
@@ -406,6 +499,15 @@ object Terms
 		for((noun, cmd) in nouns)
 			if(token.startsWith(noun) && token.substring(noun.length) in SUFFIXES) return cmd + token.substring(noun.length)
 		return null
+	}
+
+	/** The line opens with a command we know ("Buy Maria a ring"), not with a noun. */
+	fun startsWithCommand(english: String): Boolean
+	{
+		val words = english.trimStart(' ', '"', '\'', '-', '–', '—').split(Regex("\\s+")).filter { it.isNotEmpty() }
+		if(words.size < 2) return false
+		return words[0].lowercase().trim(',', '.', '!', '?') in VERB_NOUNS &&
+			words[1].lowercase().trim(',', '.', '!', '?') !in NOT_A_COMMAND_NEXT
 	}
 
 	/** The first command of the line, and those joined to it by «و», as commands. */
